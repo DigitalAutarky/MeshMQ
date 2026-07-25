@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>HackyMessage</RootNamespace>
+        <LangVersion>preview</LangVersion>
+        <TargetFramework>net11.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Library\Library.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="MessagePack" Version="3.1.7" />
+      <PackageReference Include="Microsoft.VisualStudio.Validation" Version="17.13.22" />
+      <PackageReference Include="Serilog" Version="4.4.0-dev-02437" />
+      <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+      <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+      <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
+      <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    </ItemGroup>
+
+</Project>

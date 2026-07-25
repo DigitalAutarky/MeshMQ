@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Benchmark.PartitionBenchmark-20260709-215946</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.16.0-preview.1, Linux Linux Mint 20.3 (Una)
+Intel Core i7-8650U CPU 1.90GHz (Max: 2.88GHz) (Kaby Lake R), 1 CPU, 8 logical and 4 physical cores
+Memory: 15.37 GB Total, 1.99 GB Available
+.NET SDK 11.0.100-preview.4.26230.115
+  [Host]     : .NET 11.0.0 (11.0.0-preview.4.26230.115, 11.0.26.23115), X64 RyuJIT x86-64-v3
+  Job-CNUJVU : .NET 11.0.0 (11.0.0-preview.4.26230.115, 11.0.26.23115), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code>InvocationCount=1  UnrollFactor=1  
+</code></pre>
+
+<table>
+<thead><tr><th>Method     </th><th>WriteBufferSize</th><th>ReadBatchSize</th><th>Mean </th><th>Error</th><th>StdDev</th><th>Median</th><th>Gen0</th><th>Gen1</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>EndToEndBenchmark</td><td>100</td><td>100</td><td>1,228.39 ms</td><td>23.486 ms</td><td>27.96 ms</td><td>1,233.36 ms</td><td>2000.0000</td><td>1000.0000</td><td>11.38 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>100</td><td>500</td><td>945.66 ms</td><td>17.299 ms</td><td>16.18 ms</td><td>944.11 ms</td><td>1000.0000</td><td>-</td><td>11.22 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>100</td><td>1000</td><td>901.89 ms</td><td>17.600 ms</td><td>20.95 ms</td><td>905.78 ms</td><td>1000.0000</td><td>-</td><td>11.21 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>100</td><td>10000</td><td>863.38 ms</td><td>16.690 ms</td><td>19.87 ms</td><td>866.40 ms</td><td>1000.0000</td><td>-</td><td>11.17 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>500</td><td>100</td><td>696.72 ms</td><td>13.606 ms</td><td>18.16 ms</td><td>695.74 ms</td><td>1000.0000</td><td>-</td><td>11.16 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>500</td><td>500</td><td>289.79 ms</td><td>6.942 ms</td><td>20.14 ms</td><td>293.33 ms</td><td>1000.0000</td><td>-</td><td>11.02 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>500</td><td>1000</td><td>228.26 ms</td><td>5.564 ms</td><td>16.14 ms</td><td>226.12 ms</td><td>1000.0000</td><td>-</td><td>11.02 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>500</td><td>10000</td><td>190.88 ms</td><td>3.792 ms</td><td>10.32 ms</td><td>191.98 ms</td><td>1000.0000</td><td>-</td><td>10.79 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>1000</td><td>100</td><td>670.62 ms</td><td>13.270 ms</td><td>27.70 ms</td><td>675.05 ms</td><td>2000.0000</td><td>1000.0000</td><td>11.08 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>1000</td><td>500</td><td>238.87 ms</td><td>9.457 ms</td><td>27.59 ms</td><td>243.40 ms</td><td>1000.0000</td><td>-</td><td>10.47 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>1000</td><td>1000</td><td>161.39 ms</td><td>8.993 ms</td><td>26.37 ms</td><td>167.36 ms</td><td>1000.0000</td><td>-</td><td>10.44 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>1000</td><td>10000</td><td>113.15 ms</td><td>5.531 ms</td><td>16.31 ms</td><td>113.36 ms</td><td>1000.0000</td><td>-</td><td>10.92 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>10000</td><td>100</td><td>654.11 ms</td><td>13.203 ms</td><td>38.72 ms</td><td>662.43 ms</td><td>2000.0000</td><td>1000.0000</td><td>13.07 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>10000</td><td>500</td><td>230.17 ms</td><td>9.087 ms</td><td>26.65 ms</td><td>234.40 ms</td><td>1000.0000</td><td>-</td><td>12.29 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>10000</td><td>1000</td><td>155.44 ms</td><td>6.781 ms</td><td>19.89 ms</td><td>154.51 ms</td><td>2000.0000</td><td>1000.0000</td><td>13.01 MB</td>
+</tr><tr><td>EndToEndBenchmark</td><td>10000</td><td>10000</td><td>89.05 ms</td><td>3.738 ms</td><td>11.02 ms</td><td>85.95 ms</td><td>1000.0000</td><td>-</td><td>12.66 MB</td>
+</tr></tbody></table>
+</body>
+</html>

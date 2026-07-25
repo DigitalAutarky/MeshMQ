@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>HackyMessage</RootNamespace>
+        <LangVersion>preview</LangVersion>
+        <TargetFramework>net11.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="DotNext.Threading" Version="6.4.0" />
+      <PackageReference Include="MessagePack" Version="3.1.7" />
+      <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="11.0.0-preview.5.26302.115" />
+      <PackageReference Include="Microsoft.VisualStudio.Validation" Version="17.13.22" />
+      <PackageReference Include="Serilog" Version="4.4.0-dev-02437" />
+      <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+      <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+      <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
+      <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+      <PackageReference Include="System.IO.Hashing" Version="11.0.0-preview.5.26302.115" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="Microsoft.VisualStudio.Threading">
+        <HintPath>..\ConsoleApplication\bin\Debug\net10.0\Microsoft.VisualStudio.Threading.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
+</Project>
