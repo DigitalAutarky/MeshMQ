@@ -47,7 +47,7 @@ jobs:
           dotnet-version: 11.0.100-preview.4.26230.115
       - name: Run Benchmarks
         run: |
-          dotnet run --project ./Benchmark/Benchmark.csproj -c Release --exporters json
+          dotnet run --project ./Benchmark/Benchmark.csproj -c Release -- --exporters json-full
       - name: Find Benchmark JSON
         id: locate-json
         run: |
