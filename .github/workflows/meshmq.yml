@@ -49,17 +49,17 @@ jobs:
         run: |
           dotnet run --project ./Benchmark/Benchmark.csproj -c Release --exporters json-full      
       - name: Find Benchmark JSON
-          id: locate-json
-          run: |
-            JSON_FILE=$(find ./Benchmark/BenchmarkDotNet.Artifacts/results -name "*.json" | head -n 1)
-            if [ -z "$JSON_FILE" ]; then
-              echo "Error: No JSON benchmark report found!"
-              echo "Here is the contents of the Artifacts directory for debugging:"
-              ls -R ./Benchmark/BenchmarkDotNet.Artifacts || echo "Artifacts directory missing."
-              exit 1
-            fi
-            echo "json_file=$JSON_FILE" >> $GITHUB_OUTPUT
-            echo "Found JSON: $JSON_FILE"
+        id: locate-json
+        run: |
+          JSON_FILE=$(find ./Benchmark/BenchmarkDotNet.Artifacts/results -name "*.json" | head -n 1)
+          if [ -z "$JSON_FILE" ]; then
+            echo "Error: No JSON benchmark report found!"
+            echo "Here is the contents of the Artifacts directory for debugging:"
+            ls -R ./Benchmark/BenchmarkDotNet.Artifacts || echo "Artifacts directory missing."
+            exit 1
+          fi
+          echo "json_file=$JSON_FILE" >> $GITHUB_OUTPUT
+          echo "Found JSON: $JSON_FILE"
       - name: Store Benchmark Result & Detect Regression
         uses: rhysd/github-action-benchmark@v1
         with:
