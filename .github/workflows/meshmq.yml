@@ -38,12 +38,11 @@ jobs:
         run: dotnet test --verbosity normal
   
   benchmark:
-    name: Run BenchmarkDotNet Regression Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup .NET
-        uses: actions/dotnet-setup@v4
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 11.0.100-preview.4.26230.115
       - name: Run Benchmarks
