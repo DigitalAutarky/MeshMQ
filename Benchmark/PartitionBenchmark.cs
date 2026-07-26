@@ -5,10 +5,8 @@ using HackyMessage.Core.Partition;
 using HackyMessage.Core.Policy.Buffer;
 using HackyMessage.Core.Policy.Execution;
 using HackyMessage.Core.Queue.DeadLetterQueue;
-using HackyMessage.Persistence;
 using HackyMessage.Persistence.Provider;
 using HackyMessage.Persistence.Provider.Factory;
-using vtortola.WebSockets;
 
 namespace Benchmark;
 
