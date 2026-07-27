@@ -74,12 +74,17 @@ jobs:
       - name: Store Benchmark Result & Detect Regression
         uses: rhysd/github-action-benchmark@v1
         with:
+          name: 'MeshMQ Core Benchmarks'
           tool: 'benchmarkdotnet'
           output-file-path: ${{ steps.locate-json.outputs.json_file }}
-          alert-threshold: '120%'
-          comment-on-alert: true
-          fail-on-alert: true
-          gh-pages-branch: 'gh-pages'
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
+          
+          alert-threshold: '120%'
+          fail-on-alert: true
+          
+          comment-on-alert: true
+          summary-always: true
+          
+          gh-pages-branch: 'gh-pages'
+          auto-push: ${{ github.event_name == 'push' }}
     
