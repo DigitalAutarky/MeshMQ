@@ -15,12 +15,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 11.0.100-preview.4.26230.115
+        
     - name: Restore dependencies
       run: dotnet restore
+      
     - name: Build
       run: dotnet build --no-restore
       
@@ -28,12 +31,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 11.0.100-preview.4.26230.115
+          
       - name: Restore dependencies
         run: dotnet restore
+        
       - name: Test
         run: dotnet test --verbosity normal
   
@@ -41,13 +47,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 11.0.100-preview.4.26230.115
+          
       - name: Run Benchmarks
+        working-directory: ./Benchmark
         run: |
-          dotnet run --project ./Benchmark/Benchmark.csproj -c Release -- --filter "*" --exporters fulljson
+          dotnet run -c Release -- --filter "*" --exporters fulljson
+          
       - name: Find Benchmark JSON
         id: locate-json
         run: |
@@ -60,6 +70,7 @@ jobs:
           fi
           echo "json_file=$JSON_FILE" >> $GITHUB_OUTPUT
           echo "Found JSON: $JSON_FILE"
+          
       - name: Store Benchmark Result & Detect Regression
         uses: rhysd/github-action-benchmark@v1
         with:
