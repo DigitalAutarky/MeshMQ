@@ -74,16 +74,33 @@ jobs:
       # 1. Guarantee the directory exists so the benchmark action can safely write to it
       - name: Create baseline directory
         run: mkdir -p ./baseline
-      
-      # 2. Fetch the baseline from the latest successful run on main
+          
+      # 2. Get the Run ID of the latest successful 'main' workflow
+      - name: Get Latest Main Run ID
+        id: get-run-id
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Uses the native GitHub CLI to find the ID of the last successful run on main
+          LATEST_RUN_ID=$(gh run list --branch main --workflow "${{ github.workflow }}" --status success --limit 1 --json databaseId -q '.[0].databaseId')
+          
+          if [ -z "$LATEST_RUN_ID" ] || [ "$LATEST_RUN_ID" == "null" ]; then
+          echo "No successful runs found on main yet. This is normal for the first run."
+          else
+          echo "run_id=$LATEST_RUN_ID" >> $GITHUB_OUTPUT
+          echo "Found successful run on main: $LATEST_RUN_ID"
+          fi
+          
+      # 3. Download the official v4 Baseline Artifact
       - name: Download Baseline Artifact
-        uses: dawidd6/action-download-artifact@v3
-        continue-on-error: true # Allows the workflow to pass before a baseline exists
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: main
-          name: benchmark-baseline
-          path: ./baseline
+       if: steps.get-run-id.outputs.run_id != ''
+       uses: actions/download-artifact@v4
+       continue-on-error: true # Still essential in case the artifact expired (past 30 days)
+       with:
+         name: benchmark-baseline
+         path: ./baseline
+         github-token: ${{ secrets.GITHUB_TOKEN }}
+         run-id: ${{ steps.get-run-id.outputs.run_id }}
       
       # 3. Compare PR against Baseline & Generate standardized JSON
       - name: Compare Benchmarks
