@@ -70,41 +70,43 @@ jobs:
           fi
           echo "json_file=$JSON_FILE" >> $GITHUB_OUTPUT
           echo "Found JSON: $JSON_FILE"
-
-      # 1. Fetch the baseline from the latest successful run on main
-      - name: Download Baseline Artifact
-        uses: dawidd6/action-download-artifact@v3
-        continue-on-error: true # Essential: allows the workflow to pass on the very first run before a baseline exists
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: main
-          name: benchmark-baseline
-          path: ./baseline
-      
-      # 2. Compare PR against Baseline & Generate standardized JSON
-      - name: Compare Benchmarks
-        uses: rhysd/github-action-benchmark@v1
-        with:
-          name: 'MeshMQ Core Benchmarks'
-          tool: 'benchmarkdotnet'
-          output-file-path: ${{ steps.locate-json.outputs.json_file }}
-          external-data-json-path: ./baseline/benchmark-data.json
           
-          # Alerting
-          alert-threshold: '120%'
-          fail-on-alert: true
-          summary-always: true
-          comment-on-alert: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          
-          # Storage config: Generates benchmark-data.json in the current directory, drops gh-pages
-          save-data-file: true
-      
-      # 3. Upload New Baseline (ONLY if this workflow is running on a push to main)
-      - name: Upload New Baseline
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-baseline
-          path: ./benchmark-data.json
-          retention-days: 30
+        # 1. Guarantee the directory exists so the benchmark action can safely write to it
+        - name: Create baseline directory
+          run: mkdir -p ./baseline
+        
+        # 2. Fetch the baseline from the latest successful run on main
+        - name: Download Baseline Artifact
+          uses: dawidd6/action-download-artifact@v3
+          continue-on-error: true # Allows the workflow to pass before a baseline exists
+          with:
+            github_token: ${{ secrets.GITHUB_TOKEN }}
+            branch: main
+            name: benchmark-baseline
+            path: ./baseline
+        
+        # 3. Compare PR against Baseline & Generate standardized JSON
+        - name: Compare Benchmarks
+          uses: rhysd/github-action-benchmark@v1
+          with:
+            name: 'MeshMQ Core Benchmarks'
+            tool: 'benchmarkdotnet'
+            output-file-path: ${{ steps.locate-json.outputs.json_file }}
+            external-data-json-path: ./baseline/benchmark-data.json
+        
+            alert-threshold: '120%'
+            fail-on-alert: true
+            summary-always: true
+            comment-on-alert: true
+            github-token: ${{ secrets.GITHUB_TOKEN }}
+        
+            save-data-file: true
+        
+        # 4. Upload New Baseline (ONLY if this workflow is running on a push to main)
+        - name: Upload New Baseline
+          if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+          uses: actions/upload-artifact@v4
+          with:
+            name: benchmark-baseline
+            path: ./baseline/benchmark-data.json # <--- Fixed: Now points to the correct folder
+            retention-days: 30
