@@ -129,7 +129,7 @@ jobs:
           name: 'MeshMQ Benchmarks'
           tool: 'benchmarkdotnet'
           output-file-path: ${{ steps.locate-json.outputs.json_file }}
-          output-data-json-path: ./baseline/benchmark-data.json
+          external-data-json-path: ./baseline/benchmark-data.json # <--- FIXED HERE
           save-data-file: true
           summary-always: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
