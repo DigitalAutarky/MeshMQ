@@ -70,60 +70,75 @@ jobs:
           fi
           echo "json_file=$JSON_FILE" >> $GITHUB_OUTPUT
           echo "Found JSON: $JSON_FILE"
-          
-      # 1. Guarantee the directory exists so the benchmark action can safely write to it
+
       - name: Create baseline directory
         run: mkdir -p ./baseline
-          
-      # 2. Get the Run ID of the latest successful 'main' workflow
+      
+      # --- PULL REQUEST ONLY STEPS ---
+
+      # 1. Get the Run ID of the latest successful 'main' workflow
       - name: Get Latest Main Run ID
+        if: github.event_name == 'pull_request'
         id: get-run-id
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Uses the native GitHub CLI to find the ID of the last successful run on main
           LATEST_RUN_ID=$(gh run list --branch main --workflow "${{ github.workflow }}" --status success --limit 1 --json databaseId -q '.[0].databaseId')
           
           if [ -z "$LATEST_RUN_ID" ] || [ "$LATEST_RUN_ID" == "null" ]; then
-          echo "No successful runs found on main yet. This is normal for the first run."
+            echo "No successful runs found on main yet."
           else
-          echo "run_id=$LATEST_RUN_ID" >> $GITHUB_OUTPUT
-          echo "Found successful run on main: $LATEST_RUN_ID"
+            echo "run_id=$LATEST_RUN_ID" >> $GITHUB_OUTPUT
+            echo "Found successful run on main: $LATEST_RUN_ID"
           fi
-          
-      # 3. Download the official v4 Baseline Artifact
-      - name: Download Baseline Artifact
-        if: steps.get-run-id.outputs.run_id != ''
-        uses: actions/download-artifact@v4
-        continue-on-error: true # Still essential in case the artifact expired (past 30 days)
-        with:
-         name: benchmark-baseline
-         path: ./baseline
-         github-token: ${{ secrets.GITHUB_TOKEN }}
-         run-id: ${{ steps.get-run-id.outputs.run_id }}
       
-      # 3. Compare PR against Baseline & Generate standardized JSON
+      # 2. Download Baseline Artifact
+      - name: Download Baseline Artifact
+        if: github.event_name == 'pull_request' && steps.get-run-id.outputs.run_id != ''
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: benchmark-baseline
+          path: ./baseline
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ steps.get-run-id.outputs.run_id }}
+      
+      # 3. Compare PR against Baseline & Fail on Regression (>20%)
       - name: Compare Benchmarks
+        if: github.event_name == 'pull_request'
         uses: rhysd/github-action-benchmark@v1
         with:
-          name: 'MeshMQ Core Benchmarks'
+          name: 'MeshMQ Benchmarks'
           tool: 'benchmarkdotnet'
           output-file-path: ${{ steps.locate-json.outputs.json_file }}
           external-data-json-path: ./baseline/benchmark-data.json
-      
+          
           alert-threshold: '120%'
           fail-on-alert: true
           summary-always: true
           comment-on-alert: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      
+
+      # --- MAIN PUSH ONLY STEPS ---
+
+      # 4. Generate Baseline File (main branch only, no alert checking)
+      - name: Generate Baseline File
+        if: github.event_name == 'push'
+        uses: rhysd/github-action-benchmark@v1
+        with:
+          name: 'MeshMQ Benchmarks'
+          tool: 'benchmarkdotnet'
+          output-file-path: ${{ steps.locate-json.outputs.json_file }}
+          output-data-json-path: ./baseline/benchmark-data.json
           save-data-file: true
-      
-      # 4. Upload New Baseline (ONLY if this workflow is running on a push to main)
+          summary-always: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 5. Upload New Baseline Artifact
       - name: Upload New Baseline
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-baseline
-          path: ./baseline/benchmark-data.json # <--- Fixed: Now points to the correct folder
+          path: ./baseline/benchmark-data.json
           retention-days: 30
