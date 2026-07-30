@@ -106,14 +106,14 @@ jobs:
       # 3. Compare PR against Baseline & Fail on Regression (>20%)
       - name: Compare Benchmarks
         if: github.event_name == 'pull_request'
-        uses: rhysd/github-action-benchmark@v1
+        uses: martincostello/github-action-benchmark@v1
         with:
           name: 'MeshMQ Benchmarks'
           tool: 'benchmarkdotnet'
           output-file-path: ${{ steps.locate-json.outputs.json_file }}
           external-data-json-path: ./baseline/benchmark-data.json
           
-          alert-threshold: '120%'
+          alert-threshold: '100%'
           fail-on-alert: true
           summary-always: true
           comment-on-alert: true
@@ -124,12 +124,12 @@ jobs:
       # 4. Generate Baseline File (main branch only, no alert checking)
       - name: Generate Baseline File
         if: github.event_name == 'push'
-        uses: rhysd/github-action-benchmark@v1
+        uses: martincostello/github-action-benchmark@v1
         with:
           name: 'MeshMQ Benchmarks'
           tool: 'benchmarkdotnet'
           output-file-path: ${{ steps.locate-json.outputs.json_file }}
-          external-data-json-path: ./baseline/benchmark-data.json # <--- FIXED HERE
+          external-data-json-path: ./baseline/benchmark-data.json
           save-data-file: true
           summary-always: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
