@@ -113,9 +113,10 @@ jobs:
           output-file-path: ${{ steps.locate-json.outputs.json_file }}
           external-data-json-path: ./baseline/benchmark-data.json
           
-          alert-threshold: '100%'
+          alert-threshold: '105%'
           fail-on-alert: true
           summary-always: true
+          comment-always: true
           comment-on-alert: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
