@@ -47,121 +47,66 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      #Setup environment
+        
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 11.0.100-preview.4.26230.115
 
-      #Run the banchmarks (joined aggregates mmultiple benchmark results in a single data file)
       - name: Run Benchmarks
         working-directory: ./Benchmark
         run: |
           dotnet run -c Release -- --filter "*" --exporters github fulljson --join
-      
-      #Find the generated benchmark results in github markdown file
-      - name: Find Benchmark GitHub MD
-        id: locate-github-md
+
+      - name: Combine Benchmark Summaries
+        if: github.event_name == 'pull_request'
+        id: combine-md
         run: |
-          MD_FILE=$(find ./Benchmark/BenchmarkDotNet.Artifacts/results -name "*github.md" | head -n 1)
-          if [ -z "MD_FILE" ]; then
-            echo "Error: No github benchmark report found!"
-            echo "Here is the contents of the Artifacts directory for debugging:"
+          COMBINED_FILE="./Benchmark/BenchmarkDotNet.Artifacts/results/combined_github.md"
+          touch "$COMBINED_FILE"
+          
+          # Find all github.md files and append them to the combined file
+          find ./Benchmark/BenchmarkDotNet.Artifacts/results -type f -name "*github.md" | while read file; do
+            echo "Merging $file..."
+            echo -e "### Benchmark: $(basename "$file")\n" >> "$COMBINED_FILE"
+            cat "$file" >> "$COMBINED_FILE"
+            echo -e "\n---\n" >> "$COMBINED_FILE"
+          done
+          
+          if [ ! -s "$COMBINED_FILE" ]; then
+            echo "Error: No github benchmark reports found!"
             ls -R ./Benchmark/BenchmarkDotNet.Artifacts || echo "Artifacts directory missing."
             exit 1
           fi
-          echo "md_file=$MD_FILE" >> $GITHUB_OUTPUT
-          echo "Found Github file: $MD_FILE"
           
-      # Ppost github markdown summary as comment
-      - name: Post Benchmark Summary
+          echo "md_file=$COMBINED_FILE" >> $GITHUB_OUTPUT
+          echo "Successfully combined files."
+
+      - name: Post Combined Benchmark Summary
         if: github.event_name == 'pull_request'
         uses: thollander/actions-comment-pull-request@v3
         with:
-          file-path: ${{ steps.locate-github-md.outputs.md_file }}
+          file-path: ${{ steps.combine-md.outputs.md_file }}
           comment-tag: benchmark-summary
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      #Find the generated benchmark results in json file
-      - name: Find Benchmark JSON
-        id: locate-json
-        run: |
-          JSON_FILE=$(find ./Benchmark/BenchmarkDotNet.Artifacts/results -name "*.json" | head -n 1)
-          if [ -z "$JSON_FILE" ]; then
-            echo "Error: No JSON benchmark report found!"
-            echo "Here is the contents of the Artifacts directory for debugging:"
-            ls -R ./Benchmark/BenchmarkDotNet.Artifacts || echo "Artifacts directory missing."
-            exit 1
-          fi
-          echo "json_file=$JSON_FILE" >> $GITHUB_OUTPUT
-          echo "Found JSON: $JSON_FILE"
-
-      #Create directory to keep baseline data in
-      - name: Create baseline directory
-        run: mkdir -p ./baseline
-        
-      # Generate Baseline File (main branch only, no alert checking)
-      - name: Generate Baseline File
-        if: github.event_name == 'push'
-        uses: martincostello/github-action-benchmark@v1
-        with:
-          name: 'MeshMQ Benchmarks'
-          tool: 'benchmarkdotnet'
-          output-file-path: ${{ steps.locate-json.outputs.json_file }}
-          external-data-json-path: ./baseline/benchmark-data.json
-          save-data-file: true
-          summary-always: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      # Upload New Baseline Artifact (main only)
-      - name: Upload New Baseline
-        if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-baseline
-          path: ./baseline/benchmark-data.json
-          retention-days: 365
-
-      # Get the Run ID of the latest successful 'main' workflow
-      - name: Get Latest Main Run ID
-        if: github.event_name == 'pull_request'
-        id: get-run-id
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          LATEST_RUN_ID=$(gh run list --branch main --workflow "${{ github.workflow }}" --status success --limit 1 --json databaseId -q '.[0].databaseId')
           
-          if [ -z "$LATEST_RUN_ID" ] || [ "$LATEST_RUN_ID" == "null" ]; then
-            echo "No successful runs found on main yet."
-          else
-            echo "run_id=$LATEST_RUN_ID" >> $GITHUB_OUTPUT
-            echo "Found successful run on main: $LATEST_RUN_ID"
-          fi
-      
-      # 2. Download Baseline Artifact
-      - name: Download Baseline Artifact
-        if: github.event_name == 'pull_request' && steps.get-run-id.outputs.run_id != ''
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: benchmark-baseline
-          path: ./baseline
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ steps.get-run-id.outputs.run_id }}
-      
-      # 3. Compare PR against Baseline & Fail on Regression (>20%)
-      - name: Compare Benchmarks
+      - name: Compare Benchmarks On Pull Request
         if: github.event_name == 'pull_request'
-        uses: martincostello/github-action-benchmark@v1
+        uses: martincostello/benchmarkdotnet-results-publisher@v2
         with:
-          name: 'MeshMQ Benchmarks'
-          tool: 'benchmarkdotnet'
-          output-file-path: ${{ steps.locate-json.outputs.json_file }}
-          external-data-json-path: ./baseline/benchmark-data.json
-          alert-threshold: '120%'
-          fail-on-alert: true
-          #summary-always: true
-          #comment-always: true
-          comment-on-alert: true
+          action: 'comment'
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          search-pattern: 'Benchmark/BenchmarkDotNet.Artifacts/results/*-report-full.json'
+          branch: 'gh-pages'
+          duration-threshold: '120%'
+          memory-threshold: '101%'
+          fail-on-alert: true
+          
+      - name: Publish Benchmarks to History
+        if: github.event_name == 'push'
+        uses: martincostello/benchmarkdotnet-results-publisher@v2
+        with:
+          action: 'publish'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          search-pattern: 'Benchmark/BenchmarkDotNet.Artifacts/results/*-report-full.json'
+          branch: 'gh-pages'
