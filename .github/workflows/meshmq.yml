@@ -98,8 +98,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           search-pattern: 'Benchmark/BenchmarkDotNet.Artifacts/results/*-report-full.json'
           branch: 'gh-pages'
-          duration-threshold: '120%'
-          memory-threshold: '101%'
+          duration-threshold: '100%'
+          memory-threshold: '100%'
           fail-on-alert: true
           
       - name: Publish Benchmarks to History
