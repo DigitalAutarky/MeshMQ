@@ -68,6 +68,12 @@ public class PartitionBenchmark
         await _consumer!.SignalDone.WaitAsync(CancellationToken.None);
     }
     
+    [Benchmark]
+    public async Task TestMultipleBenchmarksSameClass()
+    {
+        await Task.Delay(10);
+    }
+    
     private static Envelope<T> GenerateTestMessage<T>(string id, T message)
     {
         return new Envelope<T>
