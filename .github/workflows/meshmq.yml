@@ -56,7 +56,20 @@ jobs:
       - name: Run Benchmarks
         working-directory: ./Benchmark
         run: |
-          dotnet run -c Release -- --filter "*" --exporters fulljson
+          dotnet run -c Release -- --filter "*" --exporters github fulljson
+
+      - name: Find Benchmark GitHub MD
+        id: locate-github-md
+        run: |
+          MD_FILE=$(find ./Benchmark/BenchmarkDotNet.Artifacts/results -name "*github.md" | head -n 1)
+          if [ -z "MD_FILE" ]; then
+            echo "Error: No github benchmark report found!"
+            echo "Here is the contents of the Artifacts directory for debugging:"
+            ls -R ./Benchmark/BenchmarkDotNet.Artifacts || echo "Artifacts directory missing."
+            exit 1
+          fi
+          echo "md_file=$MD_FILE" >> $GITHUB_OUTPUT
+          echo "Found Github file: $MD_FILE"
 
       - name: Find Benchmark JSON
         id: locate-json
@@ -103,6 +116,15 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ steps.get-run-id.outputs.run_id }}
       
+      # Experimental, post github markdown summary as comment
+      - name: Post Benchmark Summary
+        if: github.event_name == 'pull_request'
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          file-path: ${{ steps.locate-github-md.outputs.md_file }}
+          comment-tag: benchmark-summary
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
       # 3. Compare PR against Baseline & Fail on Regression (>20%)
       - name: Compare Benchmarks
         if: github.event_name == 'pull_request'
@@ -113,10 +135,10 @@ jobs:
           output-file-path: ${{ steps.locate-json.outputs.json_file }}
           external-data-json-path: ./baseline/benchmark-data.json
           
-          alert-threshold: '105%'
+          alert-threshold: '120%'
           fail-on-alert: true
-          summary-always: true
-          comment-always: true
+          #summary-always: true
+          #comment-always: true
           comment-on-alert: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
