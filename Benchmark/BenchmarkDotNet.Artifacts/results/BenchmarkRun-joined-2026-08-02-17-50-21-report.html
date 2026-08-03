@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>BenchmarkRun-joined-2026-08-02-17-50-21</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.16.0-preview.1, Linux Linux Mint 20.3 (Una)
+Intel Core i7-8650U CPU 1.90GHz (Max: 2.70GHz) (Kaby Lake R), 1 CPU, 8 logical and 4 physical cores
+Memory: 15.37 GB Total, 0.41 GB Available
+.NET SDK 11.0.100-preview.4.26230.115
+  [Host]     : .NET 11.0.0 (11.0.0-preview.4.26230.115, 11.0.26.23115), X64 RyuJIT x86-64-v3
+  DefaultJob : .NET 11.0.0 (11.0.0-preview.4.26230.115, 11.0.26.23115), X64 RyuJIT x86-64-v3
+  Job-CNUJVU : .NET 11.0.0 (11.0.0-preview.4.26230.115, 11.0.26.23115), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code></code></pre>
+
+<table>
+<thead><tr><th>Type        </th><th>Method                   </th><th>Job </th><th>InvocationCount</th><th>UnrollFactor</th><th>WriteBufferSize</th><th>ReadBatchSize</th><th>Mean </th><th>Error</th><th>StdDev</th><th>Median</th><th>Gen0</th><th>Gen1</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>DummyBenchmark</td><td>Wait10MsAsync</td><td>DefaultJob</td><td>Default</td><td>16</td><td>?</td><td>?</td><td>11.98 ms</td><td>0.017 ms</td><td>0.016 ms</td><td>11.98 ms</td><td>-</td><td>-</td><td>272 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>EndToEndBenchmark</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>100</td><td>100</td><td>1,231.95 ms</td><td>12.299 ms</td><td>11.504 ms</td><td>1,228.82 ms</td><td>1000.0000</td><td>-</td><td>11890344 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>TestMultipleBenchmarksSameClass</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>100</td><td>100</td><td>11.53 ms</td><td>0.364 ms</td><td>1.075 ms</td><td>12.24 ms</td><td>-</td><td>-</td><td>768 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>EndToEndBenchmark</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>100</td><td>1000</td><td>895.16 ms</td><td>13.258 ms</td><td>11.753 ms</td><td>894.71 ms</td><td>1000.0000</td><td>-</td><td>11753960 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>TestMultipleBenchmarksSameClass</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>100</td><td>1000</td><td>11.38 ms</td><td>0.368 ms</td><td>1.085 ms</td><td>12.21 ms</td><td>-</td><td>-</td><td>768 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>EndToEndBenchmark</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>100</td><td>10000</td><td>864.88 ms</td><td>10.997 ms</td><td>10.286 ms</td><td>862.55 ms</td><td>1000.0000</td><td>-</td><td>11708752 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>TestMultipleBenchmarksSameClass</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>100</td><td>10000</td><td>10.27 ms</td><td>0.078 ms</td><td>0.065 ms</td><td>10.26 ms</td><td>-</td><td>-</td><td>768 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>EndToEndBenchmark</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>1000</td><td>100</td><td>666.25 ms</td><td>12.825 ms</td><td>13.170 ms</td><td>667.83 ms</td><td>1000.0000</td><td>-</td><td>11564904 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>TestMultipleBenchmarksSameClass</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>1000</td><td>100</td><td>11.39 ms</td><td>0.369 ms</td><td>1.087 ms</td><td>12.22 ms</td><td>-</td><td>-</td><td>768 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>EndToEndBenchmark</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>1000</td><td>1000</td><td>162.24 ms</td><td>9.094 ms</td><td>26.239 ms</td><td>161.74 ms</td><td>1000.0000</td><td>-</td><td>10965976 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>TestMultipleBenchmarksSameClass</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>1000</td><td>1000</td><td>11.21 ms</td><td>0.385 ms</td><td>1.134 ms</td><td>10.36 ms</td><td>-</td><td>-</td><td>768 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>EndToEndBenchmark</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>1000</td><td>10000</td><td>113.16 ms</td><td>3.550 ms</td><td>10.468 ms</td><td>115.21 ms</td><td>1000.0000</td><td>-</td><td>10929072 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>TestMultipleBenchmarksSameClass</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>1000</td><td>10000</td><td>11.55 ms</td><td>0.344 ms</td><td>1.016 ms</td><td>12.23 ms</td><td>-</td><td>-</td><td>768 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>EndToEndBenchmark</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>10000</td><td>100</td><td>659.17 ms</td><td>13.179 ms</td><td>34.718 ms</td><td>668.54 ms</td><td>2000.0000</td><td>1000.0000</td><td>13508008 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>TestMultipleBenchmarksSameClass</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>10000</td><td>100</td><td>11.32 ms</td><td>0.385 ms</td><td>1.135 ms</td><td>12.22 ms</td><td>-</td><td>-</td><td>768 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>EndToEndBenchmark</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>10000</td><td>1000</td><td>157.02 ms</td><td>7.303 ms</td><td>21.535 ms</td><td>156.71 ms</td><td>1000.0000</td><td>-</td><td>13294016 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>TestMultipleBenchmarksSameClass</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>10000</td><td>1000</td><td>11.20 ms</td><td>0.406 ms</td><td>1.192 ms</td><td>10.35 ms</td><td>-</td><td>-</td><td>768 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>EndToEndBenchmark</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>10000</td><td>10000</td><td>85.82 ms</td><td>3.512 ms</td><td>10.133 ms</td><td>83.22 ms</td><td>1000.0000</td><td>-</td><td>13307336 B</td>
+</tr><tr><td>PartitionBenchmark</td><td>TestMultipleBenchmarksSameClass</td><td>Job-CNUJVU</td><td>1</td><td>1</td><td>10000</td><td>10000</td><td>11.14 ms</td><td>0.407 ms</td><td>1.201 ms</td><td>10.33 ms</td><td>-</td><td>-</td><td>768 B</td>
+</tr></tbody></table>
+</body>
+</html>

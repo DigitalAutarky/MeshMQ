@@ -1,5 +1,4 @@
 name: MeshMQ
-
 on:
   push:
     branches: [ "main" ]
@@ -47,121 +46,53 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+        
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 11.0.100-preview.4.26230.115
-
+      
       - name: Run Benchmarks
         working-directory: ./Benchmark
         run: |
-          dotnet run -c Release -- --filter "*" --exporters github fulljson
+          dotnet run -c Release -- --filter "*" --exporters github fulljson --join
 
-      - name: Find Benchmark GitHub MD
-        id: locate-github-md
-        run: |
-          MD_FILE=$(find ./Benchmark/BenchmarkDotNet.Artifacts/results -name "*github.md" | head -n 1)
-          if [ -z "MD_FILE" ]; then
-            echo "Error: No github benchmark report found!"
-            echo "Here is the contents of the Artifacts directory for debugging:"
-            ls -R ./Benchmark/BenchmarkDotNet.Artifacts || echo "Artifacts directory missing."
-            exit 1
-          fi
-          echo "md_file=$MD_FILE" >> $GITHUB_OUTPUT
-          echo "Found Github file: $MD_FILE"
-
-      - name: Find Benchmark JSON
-        id: locate-json
-        run: |
-          JSON_FILE=$(find ./Benchmark/BenchmarkDotNet.Artifacts/results -name "*.json" | head -n 1)
-          if [ -z "$JSON_FILE" ]; then
-            echo "Error: No JSON benchmark report found!"
-            echo "Here is the contents of the Artifacts directory for debugging:"
-            ls -R ./Benchmark/BenchmarkDotNet.Artifacts || echo "Artifacts directory missing."
-            exit 1
-          fi
-          echo "json_file=$JSON_FILE" >> $GITHUB_OUTPUT
-          echo "Found JSON: $JSON_FILE"
-
-      - name: Create baseline directory
-        run: mkdir -p ./baseline
-      
-      # --- PULL REQUEST ONLY STEPS ---
-
-      # 1. Get the Run ID of the latest successful 'main' workflow
-      - name: Get Latest Main Run ID
-        if: github.event_name == 'pull_request'
-        id: get-run-id
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          LATEST_RUN_ID=$(gh run list --branch main --workflow "${{ github.workflow }}" --status success --limit 1 --json databaseId -q '.[0].databaseId')
-          
-          if [ -z "$LATEST_RUN_ID" ] || [ "$LATEST_RUN_ID" == "null" ]; then
-            echo "No successful runs found on main yet."
-          else
-            echo "run_id=$LATEST_RUN_ID" >> $GITHUB_OUTPUT
-            echo "Found successful run on main: $LATEST_RUN_ID"
-          fi
-      
-      # 2. Download Baseline Artifact
-      - name: Download Baseline Artifact
-        if: github.event_name == 'pull_request' && steps.get-run-id.outputs.run_id != ''
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: benchmark-baseline
-          path: ./baseline
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ steps.get-run-id.outputs.run_id }}
-      
-      # Experimental, post github markdown summary as comment
-      - name: Post Benchmark Summary
-        if: github.event_name == 'pull_request'
-        uses: thollander/actions-comment-pull-request@v3
-        with:
-          file-path: ${{ steps.locate-github-md.outputs.md_file }}
-          comment-tag: benchmark-summary
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      # 3. Compare PR against Baseline & Fail on Regression (>20%)
-      - name: Compare Benchmarks
-        if: github.event_name == 'pull_request'
-        uses: martincostello/github-action-benchmark@v1
-        with:
-          name: 'MeshMQ Benchmarks'
-          tool: 'benchmarkdotnet'
-          output-file-path: ${{ steps.locate-json.outputs.json_file }}
-          external-data-json-path: ./baseline/benchmark-data.json
-          
-          alert-threshold: '120%'
-          fail-on-alert: true
-          #summary-always: true
-          #comment-always: true
-          comment-on-alert: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      # --- MAIN PUSH ONLY STEPS ---
-
-      # 4. Generate Baseline File (main branch only, no alert checking)
-      - name: Generate Baseline File
-        if: github.event_name == 'push'
-        uses: martincostello/github-action-benchmark@v1
-        with:
-          name: 'MeshMQ Benchmarks'
-          tool: 'benchmarkdotnet'
-          output-file-path: ${{ steps.locate-json.outputs.json_file }}
-          external-data-json-path: ./baseline/benchmark-data.json
-          save-data-file: true
-          summary-always: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      # 5. Upload New Baseline Artifact
-      - name: Upload New Baseline
+      - name: Upload Benchmark Artifact
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-baseline
-          path: ./baseline/benchmark-data.json
-          retention-days: 30
+          name: benchmark-results
+          path: ./Benchmark/BenchmarkDotNet.Artifacts/results/
+          retention-days: 365
+
+      - name: Download Benchmark Artifact
+        if: github.event_name == 'pull_request'
+        uses: dawidd6/action-download-artifact@v8
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: meshmq.yml
+          branch: main
+          workflow_conclusion: success
+          name: benchmark-results
+          path: ./Benchmark/BenchmarkDotNet.Artifacts/baseline/
+
+      - name: Compare Benchmarks
+        if: github.event_name == 'pull_request'
+        working-directory: ./Benchmark
+        shell: pwsh
+        run: |
+          ./Scripts/Compare-Benchmarks.ps1 `
+            -BenchmarkPath    "./BenchmarkDotNet.Artifacts/results/" `
+            -BaselinePath     "./BenchmarkDotNet.Artifacts/baseline/" `
+            -ComparisonResult "./BenchmarkDotNet.Artifacts/results/comparison.md" `
+            -Display `
+              "key=Statistics.Mean&name=Duration&threshold=1.2", `
+              "key=Memory.BytesAllocatedPerOperation&name=Allocation&threshold=1.2"
+
+      - name: Post Benchmark Comparison (Sticky)
+        if: github.event_name == 'pull_request'
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          file-path: ./Benchmark/BenchmarkDotNet.Artifacts/results/comparison.md
+          comment-tag: benchmark-summary
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
