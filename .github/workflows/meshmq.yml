@@ -51,6 +51,14 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 11.0.100-preview.4.26230.115
+
+      - name: Clean Previous Results
+        working-directory: ./Benchmark
+        shell: pwsh
+        run: |
+          if (Test-Path "./BenchmarkDotNet.Artifacts/results") {
+            Remove-Item -Path "./BenchmarkDotNet.Artifacts/results/*" -Recurse -Force
+          }
       
       - name: Run Benchmarks
         working-directory: ./Benchmark
