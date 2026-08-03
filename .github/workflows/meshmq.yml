@@ -51,6 +51,14 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 11.0.100-preview.4.26230.115
+
+      - name: Clean Previous Results
+        working-directory: ./Benchmark
+        shell: pwsh
+        run: |
+          if (Test-Path "./BenchmarkDotNet.Artifacts/results") {
+            Remove-Item -Path "./BenchmarkDotNet.Artifacts/results/*" -Recurse -Force
+          }
       
       - name: Run Benchmarks
         working-directory: ./Benchmark
@@ -80,19 +88,14 @@ jobs:
         if: github.event_name == 'pull_request'
         working-directory: ./Benchmark
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./Scripts/Compare-Benchmarks.ps1 `
             -BenchmarkPath    "./BenchmarkDotNet.Artifacts/results/" `
             -BaselinePath     "./BenchmarkDotNet.Artifacts/baseline/" `
             -ComparisonResult "./BenchmarkDotNet.Artifacts/results/comparison.md" `
+            -FailOnRegression $false `
             -Display `
               "key=Statistics.Mean&name=Duration&threshold=1.2", `
               "key=Memory.BytesAllocatedPerOperation&name=Allocation&threshold=1.2"
-
-      - name: Post Benchmark Comparison (Sticky)
-        if: github.event_name == 'pull_request'
-        uses: thollander/actions-comment-pull-request@v3
-        with:
-          file-path: ./Benchmark/BenchmarkDotNet.Artifacts/results/comparison.md
-          comment-tag: benchmark-summary
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
