@@ -10,6 +10,9 @@ param(
     [string]$ComparisonResult,
 
     [Parameter(Mandatory=$true)]
+    [bool]$FailOnRegression, # <--- Boolean parameter for the master switch
+
+    [Parameter(Mandatory=$true)]
     [string[]]$Display
 )
 
@@ -61,7 +64,8 @@ $sortedBenchmarks = $benchJson.Benchmarks | Sort-Object FullName -Descending
 
 $md = [System.Text.StringBuilder]::new()
 
-# 4. Write title into Markdown file
+# 4. Write title and sticky comment anchor into Markdown file
+$md.AppendLine("") | Out-Null # <--- Anchor for sticky finding
 $md.AppendLine("# Benchmark Summary") | Out-Null
 $md.AppendLine() | Out-Null
 
@@ -93,7 +97,6 @@ foreach ($group in $groupedBenchmarks) {
         $methodTitle = if ($bench.MethodTitle) { $bench.MethodTitle } else { "N/A" }
         $parameters = if ($bench.Parameters) { $bench.Parameters } else { "None" }
 
-        # Markdown tables break if there are pipe '|' characters in parameters, so replacing them just in case
         $rowCells.Add($methodTitle.Replace('|', '-'))
         $rowCells.Add($parameters.Replace('|', '-'))
 
@@ -105,11 +108,9 @@ foreach ($group in $groupedBenchmarks) {
             $isFailed = $false
 
             if ($null -ne $currentVal) {
-                # Format raw numbers cleanly to 2 decimal places
                 $currentFmt = "{0:N2}" -f $currentVal
 
                 if ($null -ne $baseVal -and $baseVal -ne 0) {
-                    # 7. Calculate ratio and append in brackets
                     $ratio = $currentVal / $baseVal
                     $ratioStr = "{0:N2}" -f $ratio
 
@@ -132,7 +133,6 @@ foreach ($group in $groupedBenchmarks) {
 
             if ($isFailed) {
                 $overallFailure = $true
-                # Attempt standard HTML red output, fallback to bold and emoji
                 $cellText = "**<span style=`"color:red`">$cellText</span>** 🔴"
             }
 
@@ -154,7 +154,34 @@ if (-not (Test-Path $outDir)) {
 # Output to Markdown file
 $md.ToString() | Set-Content -Path $ComparisonResult -Encoding UTF8
 
+# --- NATIVE GH CLI STICKY COMMENTING LOGIC ---
+if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
+    $prNumber = $matches[1]
+    Write-Host "Posting sticky comment to PR #$prNumber via GitHub CLI..."
+
+    # Check if a comment containing our hidden tag already exists
+    $existingCommentId = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --jq '.[] | select(.body | contains("")) | .id' | Select-Object -First 1
+
+    if ($existingCommentId) {
+        Write-Host "Updating existing comment ID: $existingCommentId"
+        $rawBody = Get-Content -Path $ComparisonResult -Raw
+        gh api --method PATCH "repos/$env:GITHUB_REPOSITORY/issues/comments/$existingCommentId" -f body="$rawBody" | Out-Null
+    } else {
+        Write-Host "Creating new sticky benchmark comment..."
+        gh pr comment $prNumber --body-file $ComparisonResult | Out-Null
+    }
+} else {
+    Write-Host "Not running in a Pull Request context. Skipping comment posting."
+}
+
+# --- EVALUATE REGRESSION FAIL SWITCH ---
 if ($overallFailure) {
-    Write-Error "Performance regression detected! One or more benchmarks exceeded their configured thresholds."
-    exit 1
+    Write-Warning "Performance regression detected! One or more benchmarks exceeded their configured thresholds."
+
+    if ($FailOnRegression) {
+        Write-Error "Failing the workflow step because -FailOnRegression is set to true."
+        exit 1
+    } else {
+        Write-Host "Regressions found, but -FailOnRegression is false. Exiting gracefully without failing build."
+    }
 }
