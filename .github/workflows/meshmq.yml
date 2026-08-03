@@ -47,12 +47,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 11.0.100-preview.4.26230.115
-
+      
       - name: Run Benchmarks
         working-directory: ./Benchmark
         run: |
@@ -60,16 +60,14 @@ jobs:
 
       - name: Upload Benchmark Artifact
         if: github.event_name == 'push'
-        working-directory: ./Benchmark
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
-          path: ./BenchmarkDotNet.Artifacts/results/
+          path: ./Benchmark/BenchmarkDotNet.Artifacts/results/
           retention-days: 365
-          
+
       - name: Download Benchmark Artifact
         if: github.event_name == 'pull_request'
-        working-directory: ./Benchmark
         uses: dawidd6/action-download-artifact@v8
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -77,8 +75,8 @@ jobs:
           branch: main
           workflow_conclusion: success
           name: benchmark-results
-          path: ./BenchmarkDotNet.Artifacts/baseline/
-          
+          path: ./Benchmark/BenchmarkDotNet.Artifacts/baseline/
+
       - name: Compare Benchmarks
         if: github.event_name == 'pull_request'
         working-directory: ./Benchmark
@@ -91,12 +89,11 @@ jobs:
             -Display `
               "key=Statistics.Mean&name=Duration&threshold=1.2", `
               "key=Memory.BytesAllocatedPerOperation&name=Allocation&threshold=1.2"
-    
+
       - name: Post Benchmark Comparison (Sticky)
         if: github.event_name == 'pull_request'
-        working-directory: ./Benchmark
         uses: thollander/actions-comment-pull-request@v3
         with:
-          file-path: ./BenchmarkDotNet.Artifacts/results/comparison.md
+          file-path: ./Benchmark/BenchmarkDotNet.Artifacts/results/comparison.md # Updated path
           comment-tag: benchmark-summary
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
