@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+        
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -93,6 +93,6 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: thollander/actions-comment-pull-request@v3
         with:
-          file-path: ./Benchmark/BenchmarkDotNet.Artifacts/results/comparison.md # Updated path
+          file-path: ./Benchmark/BenchmarkDotNet.Artifacts/results/comparison.md
           comment-tag: benchmark-summary
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
