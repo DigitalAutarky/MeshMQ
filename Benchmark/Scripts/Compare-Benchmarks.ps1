@@ -92,7 +92,7 @@ $md = [System.Text.StringBuilder]::new()
 
 # 4. Write title and sticky comment anchor into Markdown file
 $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null # <--- Anchor for sticky finding
-$md.AppendLine("# Benchmark Summary") | Out-Null
+$md.AppendLine("# Benchmark Summary {{STATUS_EMOJI}}") | Out-Null
 $md.AppendLine() | Out-Null
 
 $overallFailure = $false
@@ -206,7 +206,9 @@ if (-not (Test-Path $outDir)) {
 }
 
 # Output to Markdown file
-$md.ToString() | Set-Content -Path $ComparisonResult -Encoding UTF8
+$statusEmoji = if ($overallFailure) { ":no_entry_sign:" } else { ":thumbsup:" }
+$finalMarkdown = $md.ToString() -replace '\{\{STATUS_EMOJI\}\}', $statusEmoji
+$finalMarkdown | Set-Content -Path $ComparisonResult -Encoding UTF8
 
 # --- NATIVE GH CLI STICKY COMMENTING LOGIC ---
 if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
