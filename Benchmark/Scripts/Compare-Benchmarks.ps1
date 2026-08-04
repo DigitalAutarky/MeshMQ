@@ -103,7 +103,7 @@ foreach ($group in $groupedBenchmarks) {
     $groupMethod = $firstItem.MethodTitle
 
     # 1. Write the Header format
-    $md.AppendLine("## $groupType $groupMethod") | Out-Null
+    $md.AppendLine("### $groupType.$groupMethod") | Out-Null
     $md.AppendLine() | Out-Null
 
     # 2. Gather all unique parameters for this group to create dynamic columns
@@ -129,13 +129,13 @@ foreach ($group in $groupedBenchmarks) {
     # Add dynamic parameter headers (if any)
     foreach ($k in $allParamKeys) {
         $headerCells.Add($k)
-        $separatorCells.Add("---")
+        $separatorCells.Add(":---")
     }
 
     # Add display column headers
     foreach ($col in $displayCols) {
         $headerCells.Add($col.Name)
-        $separatorCells.Add("---")
+        $separatorCells.Add("---:")
     }
 
     # Write table structure
@@ -169,11 +169,6 @@ foreach ($group in $groupedBenchmarks) {
                 if ($null -ne $baseVal -and $baseVal -ne 0) {
                     $ratio = $currentVal / $baseVal
                     $ratioStr = "{0:N2}" -f $ratio
-
-                    if ($ratio -gt 1) {
-                        $ratioStr = "+$ratioStr"
-                    }
-
                     $cellText = "$currentFmt ($ratioStr)"
 
                     # Check Threshold limits
