@@ -59,6 +59,24 @@ function Get-NestedProperty {
     return $current
 }
 
+# Helper: Parse BenchmarkDotNet Parameter String into a Dictionary
+function Get-ParsedParameters {
+    param([string]$ParamString)
+    $dict = [ordered]@{}
+    if (-not [string]::IsNullOrWhiteSpace($ParamString) -and $ParamString -ne "None") {
+        $parts = $ParamString -split ','
+        foreach ($part in $parts) {
+            $kv = $part -split '=', 2
+            if ($kv.Count -eq 2) {
+                $dict[$kv[0].Trim()] = $kv[1].Trim()
+            } else {
+                $dict["Param_$($dict.Count)"] = $part.Trim()
+            }
+        }
+    }
+    return $dict
+}
+
 # 3. Create a sorted list of benchmarks by FullName descending
 $sortedBenchmarks = $benchJson.Benchmarks | Sort-Object FullName -Descending
 
@@ -71,35 +89,67 @@ $md.AppendLine() | Out-Null
 
 $overallFailure = $false
 
-# Group benchmarks by their Type (Class name)
-$groupedBenchmarks = $sortedBenchmarks | Group-Object Type
+# Group benchmarks by their Type AND MethodTitle
+$groupedBenchmarks = $sortedBenchmarks | Group-Object Type, MethodTitle
 
 foreach ($group in $groupedBenchmarks) {
-    # 6. Write the type as a smaller header
-    $md.AppendLine("## $($group.Name)") | Out-Null
+    # Extract Type and MethodTitle securely from the first item in the group
+    $firstItem = $group.Group[0]
+    $groupType = $firstItem.Type
+    $groupMethod = $firstItem.MethodTitle
 
-    # Construct Markdown Table Header
-    $headerNames = $displayCols.Name -join " | "
-    $md.AppendLine("| MethodTitle | Parameters | $headerNames |") | Out-Null
+    # 1. Write the new Header format
+    $md.AppendLine("## $groupType $groupMethod") | Out-Null
 
-    # Construct Markdown Table Separator
-    $separators = $displayCols | ForEach-Object { "---" }
-    $md.AppendLine("|---|---|$(($separators -join '|'))|") | Out-Null
+    # 3. Gather all unique parameters for this group to create dynamic columns
+    $allParamKeys = [System.Collections.Generic.List[string]]::new()
+    $groupParamsMap = @{}
 
-    # 5. Iterate through the sorted list
     foreach ($bench in $group.Group) {
+        $pString = if ($bench.Parameters) { $bench.Parameters } else { "" }
+        $parsedParams = Get-ParsedParameters -ParamString $pString
+        $groupParamsMap[$bench.FullName] = $parsedParams
 
+        foreach ($key in $parsedParams.Keys) {
+            if ($key -notin $allParamKeys) {
+                $allParamKeys.Add($key)
+            }
+        }
+    }
+
+    # 2. Construct HTML Table to guarantee 100% width expansion
+    $md.AppendLine('<table width="100%">') | Out-Null
+    $md.AppendLine('  <thead>') | Out-Null
+    $md.AppendLine('    <tr>') | Out-Null
+
+    # Render dynamic parameter headers (if any exist)
+    foreach ($k in $allParamKeys) {
+        $md.AppendLine("      <th>$k</th>") | Out-Null
+    }
+    # Render display column headers
+    foreach ($col in $displayCols) {
+        $md.AppendLine("      <th>$($col.Name)</th>") | Out-Null
+    }
+
+    $md.AppendLine('    </tr>') | Out-Null
+    $md.AppendLine('  </thead>') | Out-Null
+    $md.AppendLine('  <tbody>') | Out-Null
+
+    # Iterate through the sorted list
+    foreach ($bench in $group.Group) {
         # Find matching baseline using FullName
         $baseline = $baseJson.Benchmarks | Where-Object FullName -eq $bench.FullName | Select-Object -First 1
 
-        $rowCells = [System.Collections.Generic.List[string]]::new()
+        $md.AppendLine('    <tr>') | Out-Null
 
-        $methodTitle = if ($bench.MethodTitle) { $bench.MethodTitle } else { "N/A" }
-        $parameters = if ($bench.Parameters) { $bench.Parameters } else { "None" }
+        # Render dynamic parameter cell contents
+        $pDict = $groupParamsMap[$bench.FullName]
+        foreach ($k in $allParamKeys) {
+            $val = if ($pDict.Contains($k)) { $pDict[$k] } else { "N/A" }
+            $md.AppendLine("      <td>$val</td>") | Out-Null
+        }
 
-        $rowCells.Add($methodTitle.Replace('|', '-'))
-        $rowCells.Add($parameters.Replace('|', '-'))
-
+        # Render statistical display cells
         foreach ($col in $displayCols) {
             $currentVal = Get-NestedProperty -obj $bench -path $col.Key
             $baseVal = Get-NestedProperty -obj $baseline -path $col.Key
@@ -113,14 +163,9 @@ foreach ($group in $groupedBenchmarks) {
                 if ($null -ne $baseVal -and $baseVal -ne 0) {
                     $ratio = $currentVal / $baseVal
                     $ratioStr = "{0:N2}" -f $ratio
-
-                    if ($ratio -gt 1) {
-                        $ratioStr = "+$ratioStr"
-                    }
-
                     $cellText = "$currentFmt ($ratioStr)"
 
-                    # 8 & 9. Check Threshold limits
+                    # Check Threshold limits
                     if ($col.Threshold -gt 1 -and $ratio -gt $col.Threshold) {
                         $isFailed = $true
                     } elseif ($col.Threshold -lt 1 -and $ratio -lt $col.Threshold) {
@@ -133,15 +178,17 @@ foreach ($group in $groupedBenchmarks) {
 
             if ($isFailed) {
                 $overallFailure = $true
-                $cellText = "**<span style=`"color:red`">$cellText</span>** 🔴"
+                $cellText = "$\color{red}{\mathbf{\text{$cellText}}}$"
             }
 
-            $rowCells.Add($cellText)
+            $md.AppendLine("      <td>$cellText</td>") | Out-Null
         }
 
-        # Write row to Markdown
-        $md.AppendLine("| $(($rowCells -join ' | ')) |") | Out-Null
+        $md.AppendLine('    </tr>') | Out-Null
     }
+
+    $md.AppendLine('  </tbody>') | Out-Null
+    $md.AppendLine('</table>') | Out-Null
     $md.AppendLine() | Out-Null
 }
 
@@ -159,6 +206,7 @@ if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
     $prNumber = $matches[1]
     Write-Host "Posting sticky comment to PR #$prNumber via GitHub CLI..."
 
+    # TODO: use a hidden tag string to identify the existing comments rather than an empty line...
     # Check if a comment containing our hidden tag already exists
     $existingCommentId = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --jq '.[] | select(.body | contains("")) | .id' | Select-Object -First 1
 
