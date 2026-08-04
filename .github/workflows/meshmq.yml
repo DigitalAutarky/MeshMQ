@@ -95,6 +95,7 @@ jobs:
             -BenchmarkPath    "./BenchmarkDotNet.Artifacts/results/" `
             -BaselinePath     "./BenchmarkDotNet.Artifacts/baseline/" `
             -ComparisonResult "./BenchmarkDotNet.Artifacts/results/comparison.md" `
+            -CommentTag       "benchmark-result" `
             -FailOnRegression $false `
             -Display `
               "key=Statistics.Mean&name=Duration&threshold=1.2", `

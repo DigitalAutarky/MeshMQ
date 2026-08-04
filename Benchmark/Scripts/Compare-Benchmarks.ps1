@@ -10,8 +10,11 @@ param(
     [string]$ComparisonResult,
 
     [Parameter(Mandatory=$true)]
-    [bool]$FailOnRegression, # <--- Boolean parameter for the master switch
+    [bool]$FailOnRegression,
 
+    [Parameter(Mandatory=$true)]
+    [string]$CommentTag,
+    
     [Parameter(Mandatory=$true)]
     [string[]]$Display
 )
@@ -88,7 +91,7 @@ $sortedBenchmarks = $benchJson.Benchmarks | Sort-Object FullName -Descending
 $md = [System.Text.StringBuilder]::new()
 
 # 4. Write title and sticky comment anchor into Markdown file
-$md.AppendLine("") | Out-Null # <--- Anchor for sticky finding
+$md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null # <--- Anchor for sticky finding
 $md.AppendLine("# Benchmark Summary") | Out-Null
 $md.AppendLine() | Out-Null
 
@@ -210,9 +213,9 @@ if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
     $prNumber = $matches[1]
     Write-Host "Posting sticky comment to PR #$prNumber via GitHub CLI..."
 
-    # TODO: use a hidden tag string to identify the existing comments rather than an empty line...
     # Check if a comment containing our hidden tag already exists
-    $existingCommentId = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --jq '.[] | select(.body | contains("")) | .id' | Select-Object -First 1
+    $jqFilter = ".[] | select(.body | contains(`"tag:$CommentTag`")) | .id"
+    $existingCommentId = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --jq $jqFilter | Select-Object -First 1
 
     if ($existingCommentId) {
         Write-Host "Updating existing comment ID: $existingCommentId"
