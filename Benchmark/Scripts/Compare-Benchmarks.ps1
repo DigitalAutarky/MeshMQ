@@ -64,13 +64,18 @@ function Get-ParsedParameters {
     param([string]$ParamString)
     $dict = [ordered]@{}
     if (-not [string]::IsNullOrWhiteSpace($ParamString) -and $ParamString -ne "None") {
-        $parts = $ParamString -split ','
+        # BenchmarkDotNet 'fulljson' exporter encodes parameters like a URL query string (using '&')
+        $parts = $ParamString -split '&'
         foreach ($part in $parts) {
             $kv = $part -split '=', 2
             if ($kv.Count -eq 2) {
-                $dict[$kv[0].Trim()] = $kv[1].Trim()
+                $key = [uri]::UnescapeDataString($kv[0].Replace("+", " ").Trim())
+                $val = [uri]::UnescapeDataString($kv[1].Replace("+", " ").Trim())
+                $dict[$key] = $val
             } else {
-                $dict["Param_$($dict.Count)"] = $part.Trim()
+                $key = "Param_$($dict.Count)"
+                $val = [uri]::UnescapeDataString($part.Replace("+", " ").Trim())
+                $dict[$key] = $val
             }
         }
     }
@@ -93,15 +98,15 @@ $overallFailure = $false
 $groupedBenchmarks = $sortedBenchmarks | Group-Object Type, MethodTitle
 
 foreach ($group in $groupedBenchmarks) {
-    # Extract Type and MethodTitle securely from the first item in the group
     $firstItem = $group.Group[0]
     $groupType = $firstItem.Type
     $groupMethod = $firstItem.MethodTitle
 
-    # 1. Write the new Header format
+    # 1. Write the Header format
     $md.AppendLine("## $groupType $groupMethod") | Out-Null
+    $md.AppendLine() | Out-Null
 
-    # 3. Gather all unique parameters for this group to create dynamic columns
+    # 2. Gather all unique parameters for this group to create dynamic columns
     $allParamKeys = [System.Collections.Generic.List[string]]::new()
     $groupParamsMap = @{}
 
@@ -117,36 +122,37 @@ foreach ($group in $groupedBenchmarks) {
         }
     }
 
-    # 2. Construct HTML Table to guarantee 100% width expansion
-    $md.AppendLine('<table width="100%">') | Out-Null
-    $md.AppendLine('  <thead>') | Out-Null
-    $md.AppendLine('    <tr>') | Out-Null
+    # 3. Construct Standard Markdown Table Headers
+    $headerCells = [System.Collections.Generic.List[string]]::new()
+    $separatorCells = [System.Collections.Generic.List[string]]::new()
 
-    # Render dynamic parameter headers (if any exist)
+    # Add dynamic parameter headers (if any)
     foreach ($k in $allParamKeys) {
-        $md.AppendLine("      <th>$k</th>") | Out-Null
+        $headerCells.Add($k)
+        $separatorCells.Add("---")
     }
-    # Render display column headers
+
+    # Add display column headers
     foreach ($col in $displayCols) {
-        $md.AppendLine("      <th>$($col.Name)</th>") | Out-Null
+        $headerCells.Add($col.Name)
+        $separatorCells.Add("---")
     }
 
-    $md.AppendLine('    </tr>') | Out-Null
-    $md.AppendLine('  </thead>') | Out-Null
-    $md.AppendLine('  <tbody>') | Out-Null
+    # Write table structure
+    $md.AppendLine("| $(($headerCells -join ' | ')) |") | Out-Null
+    $md.AppendLine("| $(($separatorCells -join ' | ')) |") | Out-Null
 
-    # Iterate through the sorted list
+    # 4. Iterate through the sorted list
     foreach ($bench in $group.Group) {
-        # Find matching baseline using FullName
         $baseline = $baseJson.Benchmarks | Where-Object FullName -eq $bench.FullName | Select-Object -First 1
 
-        $md.AppendLine('    <tr>') | Out-Null
+        $rowCells = [System.Collections.Generic.List[string]]::new()
+        $pDict = $groupParamsMap[$bench.FullName]
 
         # Render dynamic parameter cell contents
-        $pDict = $groupParamsMap[$bench.FullName]
         foreach ($k in $allParamKeys) {
             $val = if ($pDict.Contains($k)) { $pDict[$k] } else { "N/A" }
-            $md.AppendLine("      <td>$val</td>") | Out-Null
+            $rowCells.Add($val.Replace('|', '-')) # Escape pipes for markdown tables
         }
 
         # Render statistical display cells
@@ -163,6 +169,11 @@ foreach ($group in $groupedBenchmarks) {
                 if ($null -ne $baseVal -and $baseVal -ne 0) {
                     $ratio = $currentVal / $baseVal
                     $ratioStr = "{0:N2}" -f $ratio
+
+                    if ($ratio -gt 1) {
+                        $ratioStr = "+$ratioStr"
+                    }
+
                     $cellText = "$currentFmt ($ratioStr)"
 
                     # Check Threshold limits
@@ -181,14 +192,12 @@ foreach ($group in $groupedBenchmarks) {
                 $cellText = "$\color{red}{\mathbf{\text{$cellText}}}$"
             }
 
-            $md.AppendLine("      <td>$cellText</td>") | Out-Null
+            $rowCells.Add($cellText)
         }
 
-        $md.AppendLine('    </tr>') | Out-Null
+        # Write row to Markdown
+        $md.AppendLine("| $(($rowCells -join ' | ')) |") | Out-Null
     }
-
-    $md.AppendLine('  </tbody>') | Out-Null
-    $md.AppendLine('</table>') | Out-Null
     $md.AppendLine() | Out-Null
 }
 
