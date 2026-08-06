@@ -85,6 +85,35 @@ function Get-ParsedParameters {
     return $dict
 }
 
+function Render-ExecutionContext {
+    param([System.Text.StringBuilder]$md, [PSCustomObject]$bench, [PSCustomObject]$base)
+    $md.AppendLine("'''")
+    
+    Render-ExecutionContext-Element($md, "HostEnvironmentInfo.BenchmarkDotNetCaption", $bench, $base)
+    Render-ExecutionContext-Element($md, "HostEnvironmentInfo.BenchmarkDotNetVersion", $bench, $base)
+    $md.AppendLine("")
+
+    Render-ExecutionContext-Element($md, "HostEnvironmentInfo.OsVersion", $bench, $base)
+    Render-ExecutionContext-Element($md, "HostEnvironmentInfo.ProcessorName", $bench, $base)
+    Render-ExecutionContext-Element($md, "HostEnvironmentInfo.RuntimeVersion", $bench, $base)
+    Render-ExecutionContext-Element($md, "HostEnvironmentInfo.Configuration", $bench, $base)
+    
+    $md.AppendLine("'''")
+}
+
+function Render-ExecutionContext-Element {
+    param([System.Text.StringBuilder]$md, [System.String]$key, [PSCustomObject]$bench, [PSCustomObject]$base)
+    $benchValue = $bench.$key
+    $baseValue = $base.$key
+    
+    $result = "$benchValue"
+    if($benchValue -ne $baseValue) {
+        $result = "$\color{orange}{\mathbf{\text{$result (changed)}}}$"
+    }
+    
+    $md.AppendLine($result)
+}
+
 # 3. Create a sorted list of benchmarks by FullName descending
 $sortedBenchmarks = $benchJson.Benchmarks | Sort-Object FullName -Descending
 
@@ -92,7 +121,9 @@ $md = [System.Text.StringBuilder]::new()
 
 # 4. Write title and sticky comment anchor into Markdown file
 $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null # <--- Anchor for sticky finding
-$md.AppendLine("# Benchmark Summary {{STATUS_EMOJI}}") | Out-Null
+$md.AppendLine("details") | Out-Null
+$md.AppendLine("<summary># Benchmark Summary {{STATUS_EMOJI}}</summary>") | Out-Null
+Render-ExecutionContext($md, $benchJson, $baseJson)
 $md.AppendLine() | Out-Null
 
 $overallFailure = $false
@@ -205,10 +236,15 @@ if (-not (Test-Path $outDir)) {
     New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 }
 
-# Output to Markdown file
+# Update overall status indicator
 $statusEmoji = if ($overallFailure) { ":no_entry_sign:" } else { ":thumbsup:" }
-$finalMarkdown = $md.ToString() -replace '\{\{STATUS_EMOJI\}\}', $statusEmoji
-$finalMarkdown | Set-Content -Path $ComparisonResult -Encoding UTF8
+$sb.Replace("\{\{STATUS_EMOJI\}\}", $statusEmoji)
+
+#close top level collapsible details
+$mb.AppendLine("</details>")
+
+# Output to Markdown file
+$mb.ToString() | Set-Content -Path $ComparisonResult -Encoding UTF8
 
 # --- NATIVE GH CLI STICKY COMMENTING LOGIC ---
 if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
