@@ -124,7 +124,7 @@ $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null # <--- Anchor for sticky f
 $md.AppendLine("details") | Out-Null
 $md.AppendLine("<summary># Benchmark Summary {{STATUS_EMOJI}}</summary>") | Out-Null
 Render-ExecutionContext -md $md -bench $benchJson -base $baseJson | Out-Null
-$md.AppendLine() | Out-Null
+$md.AppendLine("") | Out-Null
 
 $overallFailure = $false
 
