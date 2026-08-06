@@ -89,14 +89,14 @@ function Render-ExecutionContext {
     param([System.Text.StringBuilder]$md, [PSCustomObject]$bench, [PSCustomObject]$base)
     $md.AppendLine("'''")
     
-    Render-ExecutionContext-Element($md, "HostEnvironmentInfo.BenchmarkDotNetCaption", $bench, $base)
-    Render-ExecutionContext-Element($md, "HostEnvironmentInfo.BenchmarkDotNetVersion", $bench, $base)
+    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetCaption" -bench $bench -base $base
+    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetVersion" -bench $bench -base $base
     $md.AppendLine("")
 
-    Render-ExecutionContext-Element($md, "HostEnvironmentInfo.OsVersion", $bench, $base)
-    Render-ExecutionContext-Element($md, "HostEnvironmentInfo.ProcessorName", $bench, $base)
-    Render-ExecutionContext-Element($md, "HostEnvironmentInfo.RuntimeVersion", $bench, $base)
-    Render-ExecutionContext-Element($md, "HostEnvironmentInfo.Configuration", $bench, $base)
+    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.OsVersion" -bench $bench -base $base
+    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.ProcessorName" -bench $bench -base $base
+    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.RuntimeVersion" -bench $bench -base $base
+    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.Configuration" -bench $bench -base $base
     
     $md.AppendLine("'''")
 }
