@@ -123,7 +123,7 @@ $md = [System.Text.StringBuilder]::new()
 
 # 4. Write title and sticky comment anchor into Markdown file
 $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null # <--- Anchor for sticky finding
-$md.AppendLine("details") | Out-Null
+$md.AppendLine("<details>") | Out-Null
 $md.AppendLine("<summary># Benchmark Summary {{STATUS_EMOJI}}</summary>") | Out-Null
 Render-ExecutionContext -md $md -bench $benchJson -base $baseJson | Out-Null
 $md.AppendLine("") | Out-Null
@@ -240,7 +240,7 @@ if (-not (Test-Path $outDir)) {
 
 # Update overall status indicator
 $statusEmoji = if ($overallFailure) { ":no_entry_sign:" } else { ":thumbsup:" }
-$sb.Replace("\{\{STATUS_EMOJI\}\}", $statusEmoji)
+$mb.Replace("{{STATUS_EMOJI}}", $statusEmoji)
 
 #close top level collapsible details
 $mb.AppendLine("</details>")
