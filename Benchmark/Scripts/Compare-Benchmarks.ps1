@@ -87,7 +87,6 @@ function Get-ParsedParameters {
 
 function Render-ExecutionContext {
     param([System.Text.StringBuilder]$md, [PSCustomObject]$bench, [PSCustomObject]$base)
-    $md.AppendLine("'''") | Out-Null
     
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetCaption" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetVersion" -bench $bench -base $base | Out-Null
@@ -97,14 +96,17 @@ function Render-ExecutionContext {
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.ProcessorName" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.RuntimeVersion" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.Configuration" -bench $bench -base $base | Out-Null
-    
-    $md.AppendLine("'''")  | Out-Null
 }
 
 function Render-ExecutionContext-Element {
     param([System.Text.StringBuilder]$md, [System.String]$key, [PSCustomObject]$bench, [PSCustomObject]$base)
-    $benchValue = $bench.$key
-    $baseValue = $base.$key
+    $benchValue = $bench
+    $baseValue = $base
+
+    foreach ($part in $key.Split('.')) {
+        if ($null -ne $benchValue) {$benchValue = $benchValue.$part }
+        if ($null -ne $baseValue) {$baseValue = $baseValue.$part }
+    }
     
     $result = "$benchValue"
     if($benchValue -ne $baseValue) {
