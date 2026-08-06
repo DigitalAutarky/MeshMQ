@@ -87,18 +87,18 @@ function Get-ParsedParameters {
 
 function Render-ExecutionContext {
     param([System.Text.StringBuilder]$md, [PSCustomObject]$bench, [PSCustomObject]$base)
-    $md.AppendLine("'''")
+    $md.AppendLine("'''") | Out-Null
     
-    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetCaption" -bench $bench -base $base
-    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetVersion" -bench $bench -base $base
-    $md.AppendLine("")
+    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetCaption" -bench $bench -base $base | Out-Null
+    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetVersion" -bench $bench -base $base | Out-Null
+    $md.AppendLine("")  | Out-Null
 
-    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.OsVersion" -bench $bench -base $base
-    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.ProcessorName" -bench $bench -base $base
-    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.RuntimeVersion" -bench $bench -base $base
-    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.Configuration" -bench $bench -base $base
+    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.OsVersion" -bench $bench -base $base | Out-Null
+    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.ProcessorName" -bench $bench -base $base | Out-Null
+    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.RuntimeVersion" -bench $bench -base $base | Out-Null
+    Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.Configuration" -bench $bench -base $base | Out-Null
     
-    $md.AppendLine("'''")
+    $md.AppendLine("'''")  | Out-Null
 }
 
 function Render-ExecutionContext-Element {
@@ -111,7 +111,7 @@ function Render-ExecutionContext-Element {
         $result = "$\color{orange}{\mathbf{\text{$result (changed)}}}$"
     }
     
-    $md.AppendLine($result)
+    $md.AppendLine($result) | Out-Null
 }
 
 # 3. Create a sorted list of benchmarks by FullName descending
@@ -123,7 +123,7 @@ $md = [System.Text.StringBuilder]::new()
 $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null # <--- Anchor for sticky finding
 $md.AppendLine("details") | Out-Null
 $md.AppendLine("<summary># Benchmark Summary {{STATUS_EMOJI}}</summary>") | Out-Null
-Render-ExecutionContext($md, $benchJson, $baseJson)
+Render-ExecutionContext -md $md -bench $benchJson -base $baseJson | Out-Null
 $md.AppendLine() | Out-Null
 
 $overallFailure = $false
