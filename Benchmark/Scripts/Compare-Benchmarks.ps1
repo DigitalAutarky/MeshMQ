@@ -88,16 +88,16 @@ function Get-ParsedParameters {
 function Render-ExecutionContext {
     param([System.Text.StringBuilder]$md, [PSCustomObject]$bench, [PSCustomObject]$base)
     
-    $md.AppendLine("> <div align=""center"">")
-    $md.AppendLine("")
+    $md.AppendLine("> <div align=""center"">") | Out-Null
+    $md.AppendLine("">) | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetCaption" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetVersion" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.OsVersion" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.ProcessorName" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.RuntimeVersion" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.Configuration" -bench $bench -base $base | Out-Null
-    $md.AppendLine("")
-    $md.AppendLine("> </div>")
+    $md.AppendLine(">") | Out-Null
+    $md.AppendLine("> </div>") | Out-Null
 }
 
 function Render-ExecutionContext-Element {
@@ -270,7 +270,7 @@ if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
     $matchingComments =$commentsJson | Where-Object { $_.body -like "*tag:$CommentTag*" }
 
     # 3. Delete matching previous comments
-    foreach ($comment in$matchingComments) {
+    foreach ($comment in $matchingComments) {
         Write-Host "Deleting previous benchmark comment ID: $($comment.id)"
         gh api --method DELETE "repos/$env:GITHUB_REPOSITORY/issues/comments/$($comment.id)" | Out-Null
     }
