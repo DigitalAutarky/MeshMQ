@@ -88,7 +88,7 @@ function Get-ParsedParameters {
 function Render-ExecutionContext {
     param([System.Text.StringBuilder]$md, [PSCustomObject]$bench, [PSCustomObject]$base)
     
-    $md.AppendLine('```')
+    $md.AppendLine("> <div align=""center"">")
     $md.AppendLine("")
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetCaption" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetVersion" -bench $bench -base $base | Out-Null
@@ -97,7 +97,7 @@ function Render-ExecutionContext {
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.RuntimeVersion" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.Configuration" -bench $bench -base $base | Out-Null
     $md.AppendLine("")
-    $md.AppendLine('```')
+    $md.AppendLine("> </div>")
 }
 
 function Render-ExecutionContext-Element {
@@ -115,8 +115,9 @@ function Render-ExecutionContext-Element {
         $result = "$\color{orange}{\mathbf{\text{$result (changed)}}}$"
         $result = "<abbr title=""$baseValue"">$result</abbr>"
     }
+
     
-    $result = "<div align=""center"">$result</div>"
+    $result = "> $result"
     $md.AppendLine($result) | Out-Null
 }
 
@@ -125,7 +126,7 @@ $sortedBenchmarks = $benchJson.Benchmarks | Sort-Object FullName -Descending
 
 $md = [System.Text.StringBuilder]::new()
 
-# 4. Write title and sticky comment anchor into Markdown file
+# 4. Write title and comment anchor tag into Markdown file
 $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null # <--- Anchor for sticky finding
 
 $md.AppendLine("<details>") | Out-Null
@@ -133,7 +134,7 @@ $md.AppendLine("<summary>") | Out-Null
 $md.AppendLine("") | Out-Null
 $md.AppendLine("# Benchmark Summary {{STATUS_EMOJI}}") | Out-Null
 $md.AppendLine("") | Out-Null
-$md.AppendLine("<s/ummary>") | Out-Null
+$md.AppendLine("</summary>") | Out-Null
 $md.AppendLine("") | Out-Null
 Render-ExecutionContext -md $md -bench $benchJson -base $baseJson | Out-Null
 $md.AppendLine("") | Out-Null
@@ -260,19 +261,23 @@ $md.ToString() | Set-Content -Path $ComparisonResult -Encoding UTF8
 
 # --- NATIVE GH CLI COMMENTING LOGIC ---
 if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
-    $prNumber = $matches[1]
+    $prNumber =$matches[1]
 
-    # 1. Find and delete any existing comment(s) containing our tag
-    $jqFilter = ".[] | select(.body | contains(`"tag:$CommentTag`")) | .id"
-    $existingCommentIds = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --jq $jqFilter
-    foreach ($commentId in $existingCommentIds) {
-        Write-Host "Deleting previous benchmark comment ID: $commentId"
-        gh api --method DELETE "repos/$env:GITHUB_REPOSITORY/issues/comments/$commentId" | Out-Null
+    # 1. Fetch ALL comments across all pages and parse into PowerShell objects
+    $commentsJson = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --paginate | ConvertFrom-Json
+
+    # 2. Filter for any comment containing your tag
+    $matchingComments =$commentsJson | Where-Object { $_.body -like "*tag:$CommentTag*" }
+
+    # 3. Delete matching previous comments
+    foreach ($comment in$matchingComments) {
+        Write-Host "Deleting previous benchmark comment ID: $($comment.id)"
+        gh api --method DELETE "repos/$env:GITHUB_REPOSITORY/issues/comments/$($comment.id)" | Out-Null
     }
 
-    # 2. Always post a new comment so it appears at the end of the PR timeline
+    # 4. Post the new comment at the end of the PR
     Write-Host "Posting new benchmark comment to PR #$prNumber..."
-    gh pr comment $prNumber --body-file $ComparisonResult | Out-Null
+    gh pr comment $prNumber --body-file$ComparisonResult | Out-Null
 } else {
     Write-Host "Not running in a Pull Request context. Skipping comment posting."
 }
