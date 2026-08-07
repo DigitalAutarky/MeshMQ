@@ -15,5 +15,5 @@ public class DummyBenchmark
 {
     [Benchmark]
     public async Task Wait10MsAsync()
-        => await Task.Delay(20);
+        => await Task.Delay(10);
 }
