@@ -88,14 +88,16 @@ function Get-ParsedParameters {
 function Render-ExecutionContext {
     param([System.Text.StringBuilder]$md, [PSCustomObject]$bench, [PSCustomObject]$base)
     
+    $md.AppendLine('```')
+    $md.AppendLine("")
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetCaption" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetVersion" -bench $bench -base $base | Out-Null
-    $md.AppendLine("")  | Out-Null
-
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.OsVersion" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.ProcessorName" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.RuntimeVersion" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.Configuration" -bench $bench -base $base | Out-Null
+    $md.AppendLine("")
+    $md.AppendLine('```')
 }
 
 function Render-ExecutionContext-Element {
@@ -111,8 +113,10 @@ function Render-ExecutionContext-Element {
     $result = "$benchValue"
     if($benchValue -ne $baseValue) {
         $result = "$\color{orange}{\mathbf{\text{$result (changed)}}}$"
+        $result = "<abbr title=""$baseValue"">$result</abbr>"
     }
     
+    $result = "<div align=""center"">$result</div>"
     $md.AppendLine($result) | Out-Null
 }
 
@@ -123,8 +127,14 @@ $md = [System.Text.StringBuilder]::new()
 
 # 4. Write title and sticky comment anchor into Markdown file
 $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null # <--- Anchor for sticky finding
+
 $md.AppendLine("<details>") | Out-Null
-$md.AppendLine("<summary># Benchmark Summary {{STATUS_EMOJI}}</summary>") | Out-Null
+$md.AppendLine("<summary>") | Out-Null
+$md.AppendLine("") | Out-Null
+$md.AppendLine("# Benchmark Summary {{STATUS_EMOJI}}") | Out-Null
+$md.AppendLine("") | Out-Null
+$md.AppendLine("<s/ummary>") | Out-Null
+$md.AppendLine("") | Out-Null
 Render-ExecutionContext -md $md -bench $benchJson -base $baseJson | Out-Null
 $md.AppendLine("") | Out-Null
 
