@@ -258,23 +258,21 @@ $md.AppendLine("</details>") | Out-Null
 # Output to Markdown file
 $md.ToString() | Set-Content -Path $ComparisonResult -Encoding UTF8
 
-# --- NATIVE GH CLI STICKY COMMENTING LOGIC ---
+# --- NATIVE GH CLI COMMENTING LOGIC ---
 if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
     $prNumber = $matches[1]
-    Write-Host "Posting sticky comment to PR #$prNumber via GitHub CLI..."
 
-    # Check if a comment containing our hidden tag already exists
+    # 1. Find and delete any existing comment(s) containing our tag
     $jqFilter = ".[] | select(.body | contains(`"tag:$CommentTag`")) | .id"
-    $existingCommentId = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --jq $jqFilter | Select-Object -First 1
-
-    if ($existingCommentId) {
-        Write-Host "Updating existing comment ID: $existingCommentId"
-        $rawBody = Get-Content -Path $ComparisonResult -Raw
-        gh api --method PATCH "repos/$env:GITHUB_REPOSITORY/issues/comments/$existingCommentId" -f body="$rawBody" | Out-Null
-    } else {
-        Write-Host "Creating new sticky benchmark comment..."
-        gh pr comment $prNumber --body-file $ComparisonResult | Out-Null
+    $existingCommentIds = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --jq $jqFilter
+    foreach ($commentId in $existingCommentIds) {
+        Write-Host "Deleting previous benchmark comment ID: $commentId"
+        gh api --method DELETE "repos/$env:GITHUB_REPOSITORY/issues/comments/$commentId" | Out-Null
     }
+
+    # 2. Always post a new comment so it appears at the end of the PR timeline
+    Write-Host "Posting new benchmark comment to PR #$prNumber..."
+    gh pr comment $prNumber --body-file $ComparisonResult | Out-Null
 } else {
     Write-Host "Not running in a Pull Request context. Skipping comment posting."
 }
