@@ -240,13 +240,13 @@ if (-not (Test-Path $outDir)) {
 
 # Update overall status indicator
 $statusEmoji = if ($overallFailure) { ":no_entry_sign:" } else { ":thumbsup:" }
-$mb.Replace("{{STATUS_EMOJI}}", $statusEmoji)
+$md.Replace("{{STATUS_EMOJI}}", $statusEmoji) | Out-Null
 
 #close top level collapsible details
-$mb.AppendLine("</details>")
+$md.AppendLine("</details>") | Out-Null
 
 # Output to Markdown file
-$mb.ToString() | Set-Content -Path $ComparisonResult -Encoding UTF8
+$md.ToString() | Set-Content -Path $ComparisonResult -Encoding UTF8
 
 # --- NATIVE GH CLI STICKY COMMENTING LOGIC ---
 if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
