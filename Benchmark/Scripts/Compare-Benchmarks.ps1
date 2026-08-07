@@ -277,7 +277,7 @@ if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
 
     # 4. Post the new comment at the end of the PR
     Write-Host "Posting new benchmark comment to PR #$prNumber..."
-    gh pr comment $prNumber --body-file$ComparisonResult | Out-Null
+    gh pr comment $prNumber --body-file $ComparisonResult | Out-Null
 } else {
     Write-Host "Not running in a Pull Request context. Skipping comment posting."
 }
