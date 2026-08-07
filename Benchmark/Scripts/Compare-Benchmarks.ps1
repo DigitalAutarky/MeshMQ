@@ -89,15 +89,16 @@ function Render-ExecutionContext {
     param([System.Text.StringBuilder]$md, [PSCustomObject]$bench, [PSCustomObject]$base)
     
     $md.AppendLine("> <div align=""center"">") | Out-Null
-    $md.AppendLine(">") | Out-Null
+    $md.AppendLine("> ") | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetCaption" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetVersion" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.OsVersion" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.ProcessorName" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.RuntimeVersion" -bench $bench -base $base | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.Configuration" -bench $bench -base $base | Out-Null
-    $md.AppendLine(">") | Out-Null
+    $md.AppendLine("> ") | Out-Null
     $md.AppendLine("> </div>") | Out-Null
+    $md.AppendLine("___") | Out-Null
 }
 
 function Render-ExecutionContext-Element {
@@ -112,10 +113,8 @@ function Render-ExecutionContext-Element {
     
     $result = "$benchValue"
     if($benchValue -ne $baseValue) {
-        $result = "$\color{orange}{\mathbf{\text{$result (changed)}}}$"
-        $result = "<abbr title=""$baseValue"">$result</abbr>"
+        $result = "$\color{orange}{\mathbf{\text{$result (was: $baseValue)}}}$"
     }
-
     
     $result = "> $result"
     $md.AppendLine($result) | Out-Null
@@ -136,7 +135,9 @@ $md.AppendLine("# Benchmark Summary {{STATUS_EMOJI}}") | Out-Null
 $md.AppendLine("") | Out-Null
 $md.AppendLine("</summary>") | Out-Null
 $md.AppendLine("") | Out-Null
+$md.AppendLine("") | Out-Null
 Render-ExecutionContext -md $md -bench $benchJson -base $baseJson | Out-Null
+$md.AppendLine("") | Out-Null
 $md.AppendLine("") | Out-Null
 
 $overallFailure = $false
