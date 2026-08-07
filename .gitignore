@@ -65,3 +65,8 @@ packages/
 appsettings.Development.json
 appsettings.local.json
 .env
+
+# ==============================================================================
+# Generated Files
+# ==============================================================================
+/Benchmark/BenchmarkDotNet.Artifacts/
