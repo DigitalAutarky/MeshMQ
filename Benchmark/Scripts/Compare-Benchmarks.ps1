@@ -27,7 +27,10 @@ if ($benchFiles.Count -ne 1) {
 }
 
 $baseFiles = Get-ChildItem -Path $BaselinePath -Filter "*-report-full.json"
-if ($baseFiles.Count -ne 1) {
+if ($baseFiles.Count -eq 0) {
+    Write-Warning "No baseline JSON files found. If this is your first pull request you can ignore this warning."
+    $baseFiles = $benchFiles # compare benchmark against itself on the first pull request
+} elseif ($baseFiles.Count -ne 1) {
     Write-Error "Expected exactly 1 baseline JSON file in '$BaselinePath', found $($baseFiles.Count)."
     exit 1
 }

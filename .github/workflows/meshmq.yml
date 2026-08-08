@@ -85,7 +85,7 @@ jobs:
           path: ./Benchmark/BenchmarkDotNet.Artifacts/baseline/
 
       - name: Compare Benchmarks
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_requcd est'
         working-directory: ./Benchmark
         shell: pwsh
         env:
@@ -98,5 +98,9 @@ jobs:
             -CommentTag       "benchmark-result" `
             -FailOnRegression $false `
             -Display `
-              "key=Statistics.Mean&name=Duration&threshold=1.2", `
-              "key=Memory.BytesAllocatedPerOperation&name=Allocation&threshold=1.2"
+              "key=Statistics.Mean&name=Mean&threshold=1.2", `
+              "key=Statistics.Max&name=Max&threshold=1.2", `
+              "key=Memory.BytesAllocatedPerOperation&name=Allocation&threshold=1.2", `
+              "key=Memory.Gen0Collections&name=Gen0&threshold=2", `
+              "key=Memory.Gen1Collections&name=Gen1&threshold=2", `
+              "key=Memory.Gen2Collections&name=Gen2&threshold=2"
