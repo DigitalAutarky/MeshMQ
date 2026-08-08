@@ -27,7 +27,10 @@ if ($benchFiles.Count -ne 1) {
 }
 
 $baseFiles = Get-ChildItem -Path $BaselinePath -Filter "*-report-full.json"
-if ($baseFiles.Count -ne 1) {
+if ($baseFiles.Count -eq 0) {
+    Write-Warning "No baseline JSON files found. If this is your first pull request you can ignore this warning."
+    $baseFiles = $benchFiles # compare benchmark against itself on the first pull request
+} elseif ($baseFiles.Count -ne 1) {
     Write-Error "Expected exactly 1 baseline JSON file in '$BaselinePath', found $($baseFiles.Count)."
     exit 1
 }
@@ -150,9 +153,18 @@ foreach ($group in $groupedBenchmarks) {
     $groupType = $firstItem.Type
     $groupMethod = $firstItem.MethodTitle
 
+    $hasRegressions = $false
+    $hasImprovements = $false
+    
     # 1. Write the Header format
-    $md.AppendLine("### $groupType.$groupMethod") | Out-Null
-    $md.AppendLine() | Out-Null
+    $md.AppendLine("<details>") | Out-Null
+    $md.AppendLine("<summary>") | Out-Null
+    $md.AppendLine("") | Out-Null
+    $md.AppendLine("### $groupType\: $groupMethod {{BENCH_HASREGRESSIONS}} {{BENCH_HASIMPROVEMENTS}}") | Out-Null
+    $md.AppendLine("") | Out-Null
+    $md.AppendLine("</summary>") | Out-Null
+    $md.AppendLine("") | Out-Null
+    $md.AppendLine("") | Out-Null
 
     # 2. Gather all unique parameters for this group to create dynamic columns
     $allParamKeys = [System.Collections.Generic.List[string]]::new()
@@ -210,6 +222,7 @@ foreach ($group in $groupedBenchmarks) {
 
             $cellText = "N/A"
             $isFailed = $false
+            $isImproved = $false
 
             if ($null -ne $currentVal) {
                 $currentFmt = "{0:N2}" -f $currentVal
@@ -225,6 +238,14 @@ foreach ($group in $groupedBenchmarks) {
                     } elseif ($col.Threshold -lt 1 -and $ratio -lt $col.Threshold) {
                         $isFailed = $true
                     }
+                    
+                    #Check inverted Threshold limits (improvements)
+                    if ($col.Threshold -gt 1 -and $ratio -lt (1 / $col.Threshold)) {
+                        $isImproved = $true
+                    } elseif ($col.Threshold -lt 1 -and $ratio -gt (1 / $col.Threshold)) {
+                        $isImproved = $true
+                    }
+                    
                 } else {
                     $cellText = $currentFmt
                 }
@@ -233,6 +254,10 @@ foreach ($group in $groupedBenchmarks) {
             if ($isFailed) {
                 $overallFailure = $true
                 $cellText = "$\color{red}{\mathbf{\text{$cellText}}}$"
+                $hasRegressions = $true
+            } elseif ($isImproved) {
+                $cellText = "$\color{green}{\mathbf{\text{$cellText}}}$"
+                $hasImprovements = $true
             }
 
             $rowCells.Add($cellText)
@@ -241,6 +266,15 @@ foreach ($group in $groupedBenchmarks) {
         # Write row to Markdown
         $md.AppendLine("| $(($rowCells -join ' | ')) |") | Out-Null
     }
+
+    #update bench group status indicator
+    $regressionIndicator = if ($hasRegressions) {":red_circle:"} else { "" }
+    $md.Replace("{{BENCH_HASREGRESSIONS}}", $regressionIndicator )
+
+    $improvementIndicator = if ($hasImprovements) {":green_circle:"} else { "" }
+    $md.Replace("{{BENCH_HASIMPROVEMENTS}}", $improvementIndicator )
+
+    $md.AppendLine("</details>") | Out-Null
     $md.AppendLine() | Out-Null
 }
 
@@ -268,7 +302,7 @@ if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
     $commentsJson = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --paginate | ConvertFrom-Json
 
     # 2. Filter for any comment containing your tag
-    $matchingComments =$commentsJson | Where-Object { $_.body -like "*tag:$CommentTag*" }
+    $matchingComments =$commentsJson | Where-Object { $_.body -match "tag:$CommentTag" }
 
     # 3. Delete matching previous comments
     foreach ($comment in $matchingComments) {
