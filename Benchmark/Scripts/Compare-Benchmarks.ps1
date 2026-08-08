@@ -26,10 +26,12 @@ if ($benchFiles.Count -ne 1) {
     exit 1
 }
 
+$isComparingAgainstSelf = $false
 $baseFiles = Get-ChildItem -Path $BaselinePath -Filter "*-report-full.json"
 if ($baseFiles.Count -eq 0) {
     Write-Warning "No baseline JSON files found. If this is your first pull request you can ignore this warning."
     $baseFiles = $benchFiles # compare benchmark against itself on the first pull request
+    $isComparingAgainstSelf = $true
 } elseif ($baseFiles.Count -ne 1) {
     Write-Error "Expected exactly 1 baseline JSON file in '$BaselinePath', found $($baseFiles.Count)."
     exit 1
@@ -139,7 +141,15 @@ $md.AppendLine("") | Out-Null
 $md.AppendLine("</summary>") | Out-Null
 $md.AppendLine("") | Out-Null
 $md.AppendLine("") | Out-Null
+
 Render-ExecutionContext -md $md -bench $benchJson -base $baseJson | Out-Null
+if ($isComparingAgainstSelf) {
+    $md.AppendLine("> [!WARNING]")
+    $md.AppendLine("> No baseline JSON found so this run compared the benchmark result against itself.")
+    $md.AppendLine("> If this is your first run using this action it is the expected result and can be ignored.")
+    $md.AppendLine("> If This is not your first run then something is wrong with your workflow.")
+}
+
 $md.AppendLine("") | Out-Null
 $md.AppendLine("") | Out-Null
 
