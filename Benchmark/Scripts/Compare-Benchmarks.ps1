@@ -237,10 +237,9 @@ foreach ($group in $groupedBenchmarks) {
                     }
                     
                     #Check inverted Threshold limits (improvements)
-                    $invertedRatio = (1-$ratio)+1
-                    if($invertedRatio -gt 1 -and $ratio -gt $invertedRatio){
+                    if ($col.Threshold -gt 1 -and $ratio -lt (1 / $col.Threshold)) {
                         $isImproved = $true
-                    } elseif ($invertedRatio -lt 1 -and $ratio -lt $invertedRatio){
+                    } elseif ($col.Threshold -lt 1 -and $ratio -gt (1 / $col.Threshold)) {
                         $isImproved = $true
                     }
                     
@@ -300,7 +299,7 @@ if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
     $commentsJson = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --paginate | ConvertFrom-Json
 
     # 2. Filter for any comment containing your tag
-    $matchingComments =$commentsJson | Where-Object { $_.body -like "*tag:$CommentTag*" }
+    $matchingComments =$commentsJson | Where-Object { $_.body -match "*tag:$CommentTag*" }
 
     # 3. Delete matching previous comments
     foreach ($comment in $matchingComments) {
