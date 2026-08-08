@@ -238,9 +238,9 @@ foreach ($group in $groupedBenchmarks) {
                     
                     #Check inverted Threshold limits (improvements)
                     $invertedRatio = (1-$ratio)+1
-                    if($invertedRatio -gt 1 -and $ration -gt $invertedRatio){
+                    if($invertedRatio -gt 1 -and $ratio -gt $invertedRatio){
                         $isImproved = $true
-                    } elseif ($invertedRatio -lt 1 -and $ration -lt $invertedRatio){
+                    } elseif ($invertedRatio -lt 1 -and $ratio -lt $invertedRatio){
                         $isImproved = $true
                     }
                     
