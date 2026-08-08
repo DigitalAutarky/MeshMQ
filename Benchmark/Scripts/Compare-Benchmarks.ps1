@@ -299,7 +299,7 @@ if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
     $commentsJson = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --paginate | ConvertFrom-Json
 
     # 2. Filter for any comment containing your tag
-    $matchingComments =$commentsJson | Where-Object { $_.body -match "*tag:$CommentTag*" }
+    $matchingComments =$commentsJson | Where-Object { $_.body -match "tag:$CommentTag" }
 
     # 3. Delete matching previous comments
     foreach ($comment in $matchingComments) {
