@@ -214,8 +214,10 @@ foreach ($group in $groupedBenchmarks) {
     $bestValues = @{}
     if ($group.Group.Count -gt 1) {
         foreach ($col in $displayCols) {
-            $validValues = $group.Group | ForEach-Object { Get-NestedProperty -obj $_ -path $col.Key } | Where-Object { $null -ne $_ }
-            if ($validValues) {
+            # Wrapped in @() to ensure it's always an array, allowing us to check .Count safely
+            $validValues = @($group.Group | ForEach-Object { Get-NestedProperty -obj $_ -path $col.Key } | Where-Object { $null -ne $_ })
+
+            if ($validValues.Count -gt 0) {
                 if ($col.Threshold -gt 1) {
                     $bestValues[$col.Key] = ($validValues | Measure-Object -Minimum).Minimum
                 } elseif ($col.Threshold -lt 1) {
@@ -285,7 +287,8 @@ foreach ($group in $groupedBenchmarks) {
 
             # mark the best value per key/column with a star emoji
             if ($bestValues.Contains($col.Key) -and $currentVal -eq $bestValues[$col.Key]) {
-                $cellText = "$cellText :star:"
+                # Using the HTML entity &#11088; prevents conflicts with GitHub's MathJax parser
+                $cellText = "$cellText &#11088;"
             }
             
             $rowCells.Add($cellText)
