@@ -85,7 +85,7 @@ jobs:
           path: ./Benchmark/BenchmarkDotNet.Artifacts/baseline/
 
       - name: Compare Benchmarks
-        if: github.event_name == 'pull_requcd est'
+        if: github.event_name == 'pull_request'
         working-directory: ./Benchmark
         shell: pwsh
         env:
