@@ -173,8 +173,6 @@ foreach ($group in $groupedBenchmarks) {
     $md.AppendLine("### $groupType\: $groupMethod {{BENCH_HASREGRESSIONS}} {{BENCH_HASIMPROVEMENTS}}") | Out-Null
     $md.AppendLine("") | Out-Null
     $md.AppendLine("</summary>") | Out-Null
-    $md.AppendLine("") | Out-Null
-    $md.AppendLine("") | Out-Null
 
     # 2. Gather all unique parameters for this group to create dynamic columns
     $allParamKeys = [System.Collections.Generic.List[string]]::new()
@@ -212,6 +210,21 @@ foreach ($group in $groupedBenchmarks) {
     $md.AppendLine("| $(($headerCells -join ' | ')) |") | Out-Null
     $md.AppendLine("| $(($separatorCells -join ' | ')) |") | Out-Null
 
+    # Determine the best value per key/column to highlight it
+    $bestValues = @{}
+    if ($group.Group.Count -gt 1) {
+        foreach ($col in $displayCols) {
+            $validValues = $group.Group | ForEach-Object { Get-NestedProperty -obj $_ -path $col.Key } | Where-Object { $null -ne $_ }
+            if ($validValues) {
+                if ($col.Threshold -gt 1) {
+                    $bestValues[$col.Key] = ($validValues | Measure-Object -Minimum).Minimum
+                } elseif ($col.Threshold -lt 1) {
+                    $bestValues[$col.Key] = ($validValues | Measure-Object -Maximum).Maximum
+                }
+            }
+        }
+    }
+    
     # 4. Iterate through the sorted list
     foreach ($bench in $group.Group) {
         $baseline = $baseJson.Benchmarks | Where-Object FullName -eq $bench.FullName | Select-Object -First 1
@@ -270,6 +283,11 @@ foreach ($group in $groupedBenchmarks) {
                 $hasImprovements = $true
             }
 
+            # mark the best value per key/column with a star emoji
+            if ($bestValues.Contains($col.Key) -and $currentVal -eq $bestValues[$col.Key]) {
+                $cellText = "$cellText :star:"
+            }
+            
             $rowCells.Add($cellText)
         }
 
