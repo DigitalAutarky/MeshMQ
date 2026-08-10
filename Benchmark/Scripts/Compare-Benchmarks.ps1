@@ -207,6 +207,7 @@ foreach ($group in $groupedBenchmarks) {
     }
 
     # Write table structure
+    $md.AppendLine()
     $md.AppendLine("| $(($headerCells -join ' | ')) |") | Out-Null
     $md.AppendLine("| $(($separatorCells -join ' | ')) |") | Out-Null
 
@@ -276,32 +277,25 @@ foreach ($group in $groupedBenchmarks) {
                 }
             }
 
-            $star = [char]::ConvertFromUtf32(0x2B50)
-            $colorBase = $null
+            # Generate status indicators dynamically to prevent file encoding issues
+            $star      = [char]::ConvertFromUtf32(0x2B50)       # (a star) Best value
+            $improved  = [char]::ConvertFromUtf32(0x1F7E2)      # 🟢 Performance improvement
+            $regressed = [char]::ConvertFromUtf32(0x1F534)      # 🔴 Performance regression
 
+            # 1. Format regression / improvement state using standard Markdown bolding
             if ($isFailed) {
                 $overallFailure = $true
-                $colorBase = "\color{red}{\mathbf{\text{$cellText}}}"
                 $hasRegressions = $true
+                $cellText = "**$cellText** $regressed"
             } elseif ($isImproved) {
-                $colorBase = "\color{green}{\mathbf{\text{$cellText}}}"
                 $hasImprovements = $true
+                $cellText = "**$cellText** $improved"
             }
 
+            # 2. Check if this is the best value across the row
             $isBest = ($bestValues.Contains($col.Key) -and $currentVal -eq $bestValues[$col.Key])
-
-            if ($null -ne $colorBase) {
-                if ($isBest) {
-                    # Embed the generated star INSIDE the math block
-                    $cellText = "`$$colorBase\text{ $star}`$"
-                } else {
-                    $cellText = "`$$colorBase`$"
-                }
-            } else {
-                if ($isBest) {
-                    # No math block, standard text is safe
-                    $cellText = "$cellText $star"
-                }
+            if ($isBest) {
+                $cellText = "$cellText $star"
             }
             
             $rowCells.Add($cellText)
