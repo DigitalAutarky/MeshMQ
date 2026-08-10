@@ -276,19 +276,32 @@ foreach ($group in $groupedBenchmarks) {
                 }
             }
 
+            $star = [char]::ConvertFromUtf32(0x2B50)
+            $colorBase = $null
+
             if ($isFailed) {
                 $overallFailure = $true
-                $cellText = "$\color{red}{\mathbf{\text{$cellText}}}$"
+                $colorBase = "\color{red}{\mathbf{\text{$cellText}}}"
                 $hasRegressions = $true
             } elseif ($isImproved) {
-                $cellText = "$\color{green}{\mathbf{\text{$cellText}}}$"
+                $colorBase = "\color{green}{\mathbf{\text{$cellText}}}"
                 $hasImprovements = $true
             }
 
-            # mark the best value per key/column with a star emoji
-            if ($bestValues.Contains($col.Key) -and $currentVal -eq $bestValues[$col.Key]) {
-                # Using the HTML entity &#11088; prevents conflicts with GitHub's MathJax parser
-                $cellText = "$cellText &#11088;"
+            $isBest = ($bestValues.Contains($col.Key) -and $currentVal -eq $bestValues[$col.Key])
+
+            if ($null -ne $colorBase) {
+                if ($isBest) {
+                    # Embed the generated star INSIDE the math block
+                    $cellText = "`$$colorBase\text{ $star}`$"
+                } else {
+                    $cellText = "`$$colorBase`$"
+                }
+            } else {
+                if ($isBest) {
+                    # No math block, standard text is safe
+                    $cellText = "$cellText $star"
+                }
             }
             
             $rowCells.Add($cellText)
