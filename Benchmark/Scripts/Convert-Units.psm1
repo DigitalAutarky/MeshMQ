@@ -55,7 +55,7 @@ function Convert-TimeSpanUnit {
     $to   = $ToUnit.ToLower()
 
     if (-not $unitMap.ContainsKey($from) -or -not $unitMap.ContainsKey($to)) {
-        Write-Error "Unsupported unit suffix provided. Supported units: $($unitMap.Keys -sort-object -unique -join ', ')"
+        Write-Error "Unsupported unit suffix provided. Supported units: $(($unitMap.Keys | Sort-Object -Unique) -join ', ')"
         exit 1
     }
 
@@ -106,7 +106,7 @@ function Convert-MemoryUnit {
     $to   = $ToUnit.ToLower()
 
     if (-not $unitMap.ContainsKey($from) -or -not $unitMap.ContainsKey($to)) {
-        Write-Error "Unsupported memory unit suffix provided. Supported units: $($unitMap.Keys -sort-object -unique -join ', ')"
+        Write-Error "Unsupported memory unit suffix provided. Supported units: $(($unitMap.Keys | Sort-Object -Unique) -join ', ')"
         exit 1
     }
 

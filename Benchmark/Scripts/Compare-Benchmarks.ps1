@@ -115,11 +115,13 @@ function Render-ExecutionContext-Element {
     $benchValue = $bench
     $baseValue = $base
 
+    # TODO: use Get-Nested-Property?
     foreach ($part in $key.Split('.')) {
         if ($null -ne $benchValue) {$benchValue = $benchValue.$part }
         if ($null -ne $baseValue) {$baseValue = $baseValue.$part }
     }
     
+    # TODO: replace math rendering color hack
     $result = "$benchValue"
     if($benchValue -ne $baseValue) {
         $result = "$\color{orange}{\mathbf{\text{$result (was: $baseValue)}}}$"
@@ -140,7 +142,7 @@ $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null # <--- Anchor for sticky f
 $md.AppendLine("<details>") | Out-Null
 $md.AppendLine("<summary>") | Out-Null
 $md.AppendLine("") | Out-Null
-$md.AppendLine("# Benchmark Summary {{STATUS_EMOJI}}") | Out-Null
+$md.AppendLine("## Benchmark Summary {{STATUS_EMOJI}}") | Out-Null
 $md.AppendLine("") | Out-Null
 $md.AppendLine("</summary>") | Out-Null
 $md.AppendLine("") | Out-Null
