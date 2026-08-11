@@ -19,6 +19,9 @@ param(
     [string[]]$Display
 )
 
+# 0. Imports
+Import-Module ./Convert-Units.psm1 -Force
+
 # 1. Assert exactly 1 benchmark file and 1 baseline file
 $benchFiles = Get-ChildItem -Path $BenchmarkPath -Filter "*-report-full.json"
 if ($benchFiles.Count -ne 1) {
@@ -51,6 +54,7 @@ $displayCols = foreach ($d in $Display) {
     [PSCustomObject]@{
         Key = $dict['key']
         Name = $dict['name']
+        Unit = $dict['unit']
         Threshold = [double]$dict['threshold']
     }
 }
@@ -211,14 +215,22 @@ foreach ($group in $groupedBenchmarks) {
     $md.AppendLine("| $(($headerCells -join ' | ')) |") | Out-Null
     $md.AppendLine("| $(($separatorCells -join ' | ')) |") | Out-Null
 
-    # Determine the best value per key/column to highlight it
+    # Determine the best value per key/column to highlight it, optimal units, and unit types
     $bestValues = @{}
-    if ($group.Group.Count -gt 1) {
-        foreach ($col in $displayCols) {
-            # Wrapped in @() to ensure it's always an array, allowing us to check .Count safely
-            $validValues = @($group.Group | ForEach-Object { Get-NestedProperty -obj $_ -path $col.Key } | Where-Object { $null -ne $_ })
+    $optimalUnits = @{}
+    $unitTypes = @{}
 
-            if ($validValues.Count -gt 0) {
+    foreach ($col in $displayCols) {
+        # Wrapped in @() to ensure it's always an array, allowing us to check .Count safely
+        $validValues = @($group.Group | ForEach-Object { Get-NestedProperty -obj $_ -path $col.Key } | Where-Object { $null -ne $_ })
+
+        if ($validValues.Count -gt 0) {
+            # 1. Calculate the optimal display unit for the column
+            $optimalUnits[$col.Key] = Get-Optimal-DisplayUnit -Values ([double[]]$validValues) -Unit $col.Unit
+            # 3. Cache the unit type for formatting later
+            $unitTypes[$col.Key] = Get-Unit-Type -Unit $optimalUnits[$col.Key]
+
+            if ($group.Group.Count -gt 1) {
                 if ($col.Threshold -gt 1) {
                     $bestValues[$col.Key] = ($validValues | Measure-Object -Minimum).Minimum
                 } elseif ($col.Threshold -lt 1) {
@@ -251,14 +263,22 @@ foreach ($group in $groupedBenchmarks) {
             $isImproved = $false
 
             if ($null -ne $currentVal) {
-                $currentFmt = "{0:N2}" -f $currentVal
+                $optUnit = $optimalUnits[$col.Key]
+                $uType = $unitTypes[$col.Key]
+
+                # 2. Convert the current value to the optimal unit
+                $convertedCurrent = Convert -Value $currentVal -FromUnit $col.Unit -ToUnit $optUnit
+
+                # 3 & 4. Determine format based on unit type and append the unit string
+                $fmtString = if ($uType -eq "count") { "{0:N0}" } else { "{0:N2}" }
+                $currentFmt = "$($fmtString -f $convertedCurrent) $optUnit"
 
                 if ($null -ne $baseVal -and $baseVal -ne 0) {
                     $ratio = $currentVal / $baseVal
                     $ratioStr = "{0:N2}" -f $ratio
                     $cellText = "$currentFmt ($ratioStr)"
 
-                    # Check Threshold limits
+                    # Check Threshold limits (regressions)
                     if ($col.Threshold -gt 1 -and $ratio -gt $col.Threshold) {
                         $isFailed = $true
                     } elseif ($col.Threshold -lt 1 -and $ratio -lt $col.Threshold) {
