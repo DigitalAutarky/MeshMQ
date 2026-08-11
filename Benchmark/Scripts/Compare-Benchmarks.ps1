@@ -20,7 +20,7 @@ param(
 )
 
 # 0. Imports
-Import-Module ./Convert-Units.psm1 -Force
+Import-Module "$PSScriptRoot/Convert-Units.psm1" -Force
 
 # 1. Assert exactly 1 benchmark file and 1 baseline file
 $benchFiles = Get-ChildItem -Path $BenchmarkPath -Filter "*-report-full.json"
