@@ -20,7 +20,8 @@ param(
 )
 
 # 0. Imports
-Import-Module "$PSScriptRoot/Convert-Units.psm1" -Force
+Import-Module "$PSScriptRoot/Conversion.psm1" -Force
+Import-Module "$PSScriptRoot/Format.psm1" -Force
 
 # 1. Assert exactly 1 benchmark file and 1 baseline file
 $benchFiles = Get-ChildItem -Path $BenchmarkPath -Filter "*-report-full.json"
@@ -272,9 +273,7 @@ foreach ($group in $groupedBenchmarks) {
                 $convertedCurrent = Convert -Value $currentVal -FromUnit $col.Unit -ToUnit $optUnit
 
                 # 3 & 4. Determine format based on unit type and append the unit string
-                $fmtString = if ($uType -eq "count") { "{0:N0}" } else { "{0:N2}" }
-                $currentFmt = "$($fmtString -f $convertedCurrent) $optUnit"
-
+                $currentFmt = Format-Value -Value $convertedCurrent -Unit $optUnit
                 if ($null -ne $baseVal -and $baseVal -ne 0) {
                     $ratio = $currentVal / $baseVal
                     $ratioStr = "{0:N2}" -f $ratio

@@ -80,26 +80,11 @@ function Convert-MemoryUnit {
     # Conversion scale relative to 1 Byte
     $unitMap = @{
         'b'    = 1.0
-        'byte' = 1.0
-
-        # Binary Units (Power-of-2 / PowerShell Native: 1024)
-        'kb'   = 1024.0
-        'kib'  = 1024.0
-        'mb'   = 1048576.0            # 1024^2
-        'mib'  = 1048576.0
-        'gb'   = 1073741824.0         # 1024^3
-        'gib'  = 1073741824.0
-        'tb'   = 1099511627776.0      # 1024^4
-        'tib'  = 1099511627776.0
-        'pb'   = 1125899906842624.0   # 1024^5
-        'pib'  = 1125899906842624.0
-
-        # Decimal Units (Power-of-10 Metric: 1000)
-        'dkb'  = 1e3
-        'dmb'  = 1e6
-        'dgb'  = 1e9
-        'dtb'  = 1e12
-        'dpb'  = 1e15
+        'kb'   = 1e3
+        'mb'   = 1e6
+        'gb'   = 1e9
+        'tb'   = 1e12
+        'pb'   = 1e15
     }
 
     $from = $FromUnit.ToLower()
