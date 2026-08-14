@@ -50,7 +50,9 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 11.0.100-preview.4.26230.115
+          dotnet-version: |
+            11.0.100-preview.3.24172.9
+            11.0.100-preview.4.26230.115
 
       - name: Clean Previous Results
         working-directory: ./Benchmark

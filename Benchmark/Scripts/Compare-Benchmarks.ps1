@@ -177,7 +177,7 @@ foreach ($group in $groupedBenchmarks) {
     $md.AppendLine("<details>") | Out-Null
     $md.AppendLine("<summary>") | Out-Null
     $md.AppendLine("") | Out-Null
-    $md.AppendLine("### $groupType\: $groupMethod {{BENCH_HASREGRESSIONS}} {{BENCH_HASIMPROVEMENTS}}") | Out-Null
+    $md.AppendLine("### $groupType\::$groupMethod {{BENCH_HASREGRESSIONS}} {{BENCH_HASIMPROVEMENTS}}") | Out-Null
     $md.AppendLine("") | Out-Null
     $md.AppendLine("</summary>") | Out-Null
 
