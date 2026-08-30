@@ -137,6 +137,15 @@ $md = [System.Text.StringBuilder]::new()
 # 4. Write title and comment anchor tag into Markdown file
 $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null
 
+# FIX (a): Render Warning callout at root Markdown level (outside <details>)
+if ($isComparingAgainstSelf) {
+    $md.AppendLine("> [!WARNING]") | Out-Null
+    $md.AppendLine("> No baseline JSON found so this run compared the benchmark result against itself.") | Out-Null
+    $md.AppendLine("> If this is your first run using this action it is the expected result and can be ignored.") | Out-Null
+    $md.AppendLine("> If This is not your first run then something is wrong with your workflow.") | Out-Null
+    $md.AppendLine("") | Out-Null
+}
+
 $md.AppendLine("<details>") | Out-Null
 $md.AppendLine("<summary>") | Out-Null
 $md.AppendLine("") | Out-Null
@@ -147,23 +156,14 @@ $md.AppendLine("") | Out-Null
 $md.AppendLine("") | Out-Null
 
 Render-ExecutionContext -md $md -bench $benchJson -base $baseJson | Out-Null
-if ($isComparingAgainstSelf) {
-    $md.AppendLine("> [!WARNING]")
-    $md.AppendLine("> No baseline JSON found so this run compared the benchmark result against itself.")
-    $md.AppendLine("> If this is your first run using this action it is the expected result and can be ignored.")
-    $md.AppendLine("> If This is not your first run then something is wrong with your workflow.")
-}
 
 $md.AppendLine("") | Out-Null
 $md.AppendLine("") | Out-Null
 
 $overallFailure = $false
 
-# 5. Group benchmarks by the new LogicalGroupKey (fallback to Type::MethodTitle if missing)
-$groupedBenchmarks = $sortedBenchmarks | Group-Object {
-    if (-not [string]::IsNullOrWhiteSpace($_.LogicalGroupKey)) { $_.LogicalGroupKey }
-    else { "$($_.Type)::$($_.MethodTitle)" }
-}
+# FIX (d & e): Group benchmarks by Type (Benchmark Class) instead of LogicalGroupKey
+$groupedBenchmarks = $sortedBenchmarks | Group-Object Type
 
 foreach ($group in $groupedBenchmarks) {
     $groupKey = $group.Name
@@ -178,12 +178,6 @@ foreach ($group in $groupedBenchmarks) {
     $md.AppendLine("### $groupKey {{BENCH_HASREGRESSIONS}} {{BENCH_HASIMPROVEMENTS}}") | Out-Null
     $md.AppendLine("") | Out-Null
     $md.AppendLine("</summary>") | Out-Null
-
-    # Dynamically determine which structural columns vary within this specific group
-    $varyingCols = [System.Collections.Generic.List[string]]::new()
-    if (($group.Group | Select-Object -ExpandProperty Namespace -Unique | Where-Object { $_ }).Count -gt 1) { $varyingCols.Add("Namespace") }
-    if (($group.Group | Select-Object -ExpandProperty Type -Unique | Where-Object { $_ }).Count -gt 1) { $varyingCols.Add("Type") }
-    if (($group.Group | Select-Object -ExpandProperty MethodTitle -Unique | Where-Object { $_ }).Count -gt 1) { $varyingCols.Add("Method") }
 
     # Gather all unique parameters for this group
     $allParamKeys = [System.Collections.Generic.List[string]]::new()
@@ -205,11 +199,9 @@ foreach ($group in $groupedBenchmarks) {
     $headerCells = [System.Collections.Generic.List[string]]::new()
     $separatorCells = [System.Collections.Generic.List[string]]::new()
 
-    # Add dynamic structural headers
-    foreach ($v in $varyingCols) {
-        $headerCells.Add($v)
-        $separatorCells.Add(":---")
-    }
+    # FIX (b): Always include "Method" as the first column for every group
+    $headerCells.Add("Method")
+    $separatorCells.Add(":---")
 
     # Add dynamic parameter headers
     foreach ($k in $allParamKeys) {
@@ -256,12 +248,9 @@ foreach ($group in $groupedBenchmarks) {
 
         $rowCells = [System.Collections.Generic.List[string]]::new()
 
-        # Render dynamic structural cells
-        foreach ($v in $varyingCols) {
-            $propVal = if ($v -eq "Method") { $bench.MethodTitle } else { $bench.$v }
-            $cellValue = if ($propVal) { $propVal.Replace('|', '-') } else { "N/A" }
-            $rowCells.Add($cellValue)
-        }
+        # FIX (b): Render MethodTitle in the first cell of every row
+        $methodTitleVal = if ($bench.MethodTitle) { $bench.MethodTitle.Replace('|', '-') } else { "N/A" }
+        $rowCells.Add($methodTitleVal)
 
         # Render dynamic parameter cells
         $pDict = $groupParamsMap[$bench.FullName]
