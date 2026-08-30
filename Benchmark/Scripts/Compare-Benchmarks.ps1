@@ -14,7 +14,7 @@ param(
 
     [Parameter(Mandatory=$true)]
     [string]$CommentTag,
-    
+
     [Parameter(Mandatory=$true)]
     [string[]]$Display
 )
@@ -24,14 +24,14 @@ Import-Module "$PSScriptRoot/Conversion.psm1" -Force
 Import-Module "$PSScriptRoot/Format.psm1" -Force
 
 # 1. Assert exactly 1 benchmark file and 1 baseline file
-$benchFiles = Get-ChildItem -Path $BenchmarkPath -Filter "*-report-full.json"
+$benchFiles = Get-ChildItem -Path $BenchmarkPath -Filter "*-report-full-augmented.json"
 if ($benchFiles.Count -ne 1) {
     Write-Error "Expected exactly 1 benchmark JSON file in '$BenchmarkPath', found $($benchFiles.Count)."
     exit 1
 }
 
 $isComparingAgainstSelf = $false
-$baseFiles = Get-ChildItem -Path $BaselinePath -Filter "*-report-full.json"
+$baseFiles = Get-ChildItem -Path $BaselinePath -Filter "*-report-full-augmented.json"
 if ($baseFiles.Count -eq 0) {
     Write-Warning "No baseline JSON files found. If this is your first pull request you can ignore this warning."
     $baseFiles = $benchFiles # compare benchmark against itself on the first pull request
@@ -77,7 +77,6 @@ function Get-ParsedParameters {
     param([string]$ParamString)
     $dict = [ordered]@{}
     if (-not [string]::IsNullOrWhiteSpace($ParamString) -and $ParamString -ne "None") {
-        # BenchmarkDotNet 'fulljson' exporter encodes parameters like a URL query string (using '&')
         $parts = $ParamString -split '&'
         foreach ($part in $parts) {
             $kv = $part -split '=', 2
@@ -97,7 +96,7 @@ function Get-ParsedParameters {
 
 function Render-ExecutionContext {
     param([System.Text.StringBuilder]$md, [PSCustomObject]$bench, [PSCustomObject]$base)
-    
+
     $md.AppendLine("> <div align=""center"">") | Out-Null
     $md.AppendLine("> ") | Out-Null
     Render-ExecutionContext-Element -md $md -key "HostEnvironmentInfo.BenchmarkDotNetCaption" -bench $bench -base $base | Out-Null
@@ -116,18 +115,16 @@ function Render-ExecutionContext-Element {
     $benchValue = $bench
     $baseValue = $base
 
-    # TODO: use Get-Nested-Property?
     foreach ($part in $key.Split('.')) {
         if ($null -ne $benchValue) {$benchValue = $benchValue.$part }
         if ($null -ne $baseValue) {$baseValue = $baseValue.$part }
     }
-    
-    # TODO: replace math rendering color hack
+
     $result = "$benchValue"
     if($benchValue -ne $baseValue) {
         $result = "$\color{orange}{\mathbf{\text{$result (was: $baseValue)}}}$"
     }
-    
+
     $result = "> $result"
     $md.AppendLine($result) | Out-Null
 }
@@ -138,7 +135,7 @@ $sortedBenchmarks = $benchJson.Benchmarks | Sort-Object FullName -Descending
 $md = [System.Text.StringBuilder]::new()
 
 # 4. Write title and comment anchor tag into Markdown file
-$md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null # <--- Anchor for sticky finding
+$md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null
 
 $md.AppendLine("<details>") | Out-Null
 $md.AppendLine("<summary>") | Out-Null
@@ -162,26 +159,33 @@ $md.AppendLine("") | Out-Null
 
 $overallFailure = $false
 
-# Group benchmarks by their Type AND MethodTitle
-$groupedBenchmarks = $sortedBenchmarks | Group-Object Type, MethodTitle
+# 5. Group benchmarks by the new LogicalGroupKey (fallback to Type::MethodTitle if missing)
+$groupedBenchmarks = $sortedBenchmarks | Group-Object {
+    if (-not [string]::IsNullOrWhiteSpace($_.LogicalGroupKey)) { $_.LogicalGroupKey }
+    else { "$($_.Type)::$($_.MethodTitle)" }
+}
 
 foreach ($group in $groupedBenchmarks) {
-    $firstItem = $group.Group[0]
-    $groupType = $firstItem.Type
-    $groupMethod = $firstItem.MethodTitle
+    $groupKey = $group.Name
 
     $hasRegressions = $false
     $hasImprovements = $false
-    
-    # 1. Write the Header format
+
+    # Write the Header format
     $md.AppendLine("<details>") | Out-Null
     $md.AppendLine("<summary>") | Out-Null
     $md.AppendLine("") | Out-Null
-    $md.AppendLine("### $groupType\::$groupMethod {{BENCH_HASREGRESSIONS}} {{BENCH_HASIMPROVEMENTS}}") | Out-Null
+    $md.AppendLine("### $groupKey {{BENCH_HASREGRESSIONS}} {{BENCH_HASIMPROVEMENTS}}") | Out-Null
     $md.AppendLine("") | Out-Null
     $md.AppendLine("</summary>") | Out-Null
 
-    # 2. Gather all unique parameters for this group to create dynamic columns
+    # Dynamically determine which structural columns vary within this specific group
+    $varyingCols = [System.Collections.Generic.List[string]]::new()
+    if (($group.Group | Select-Object -ExpandProperty Namespace -Unique | Where-Object { $_ }).Count -gt 1) { $varyingCols.Add("Namespace") }
+    if (($group.Group | Select-Object -ExpandProperty Type -Unique | Where-Object { $_ }).Count -gt 1) { $varyingCols.Add("Type") }
+    if (($group.Group | Select-Object -ExpandProperty MethodTitle -Unique | Where-Object { $_ }).Count -gt 1) { $varyingCols.Add("Method") }
+
+    # Gather all unique parameters for this group
     $allParamKeys = [System.Collections.Generic.List[string]]::new()
     $groupParamsMap = @{}
 
@@ -197,11 +201,17 @@ foreach ($group in $groupedBenchmarks) {
         }
     }
 
-    # 3. Construct Standard Markdown Table Headers
+    # Construct Standard Markdown Table Headers
     $headerCells = [System.Collections.Generic.List[string]]::new()
     $separatorCells = [System.Collections.Generic.List[string]]::new()
 
-    # Add dynamic parameter headers (if any)
+    # Add dynamic structural headers
+    foreach ($v in $varyingCols) {
+        $headerCells.Add($v)
+        $separatorCells.Add(":---")
+    }
+
+    # Add dynamic parameter headers
     foreach ($k in $allParamKeys) {
         $headerCells.Add($k)
         $separatorCells.Add(":---")
@@ -218,19 +228,16 @@ foreach ($group in $groupedBenchmarks) {
     $md.AppendLine("| $(($headerCells -join ' | ')) |") | Out-Null
     $md.AppendLine("| $(($separatorCells -join ' | ')) |") | Out-Null
 
-    # Determine the best value per key/column to highlight it, optimal units, and unit types
+    # Determine optimal units and best values
     $bestValues = @{}
     $optimalUnits = @{}
     $unitTypes = @{}
 
     foreach ($col in $displayCols) {
-        # Wrapped in @() to ensure it's always an array, allowing us to check .Count safely
         $validValues = @($group.Group | ForEach-Object { Get-NestedProperty -obj $_ -path $col.Key } | Where-Object { $null -ne $_ })
 
         if ($validValues.Count -gt 0) {
-            # 1. Calculate the optimal display unit for the column
             $optimalUnits[$col.Key] = Get-Optimal-DisplayUnit -Values ([double[]]$validValues) -Unit $col.Unit
-            # 3. Cache the unit type for formatting later
             $unitTypes[$col.Key] = Get-Unit-Type -Unit $optimalUnits[$col.Key]
 
             if ($group.Group.Count -gt 1) {
@@ -242,21 +249,28 @@ foreach ($group in $groupedBenchmarks) {
             }
         }
     }
-    
-    # 4. Iterate through the sorted list
+
+    # Iterate through the benchmarks in the group
     foreach ($bench in $group.Group) {
         $baseline = $baseJson.Benchmarks | Where-Object FullName -eq $bench.FullName | Select-Object -First 1
 
         $rowCells = [System.Collections.Generic.List[string]]::new()
-        $pDict = $groupParamsMap[$bench.FullName]
 
-        # Render dynamic parameter cell contents
-        foreach ($k in $allParamKeys) {
-            $val = if ($pDict.Contains($k)) { $pDict[$k] } else { "N/A" }
-            $rowCells.Add($val.Replace('|', '-')) # Escape pipes for markdown tables
+        # Render dynamic structural cells
+        foreach ($v in $varyingCols) {
+            $propVal = if ($v -eq "Method") { $bench.MethodTitle } else { $bench.$v }
+            $cellValue = if ($propVal) { $propVal.Replace('|', '-') } else { "N/A" }
+            $rowCells.Add($cellValue)
         }
 
-        # Render statistical display cells
+        # Render dynamic parameter cells
+        $pDict = $groupParamsMap[$bench.FullName]
+        foreach ($k in $allParamKeys) {
+            $val = if ($pDict.Contains($k)) { $pDict[$k] } else { "N/A" }
+            $rowCells.Add($val.Replace('|', '-'))
+        }
+
+        # Render statistical display cells with inline Ratio
         foreach ($col in $displayCols) {
             $currentVal = Get-NestedProperty -obj $bench -path $col.Key
             $baseVal = Get-NestedProperty -obj $baseline -path $col.Key
@@ -269,41 +283,52 @@ foreach ($group in $groupedBenchmarks) {
                 $optUnit = $optimalUnits[$col.Key]
                 $uType = $unitTypes[$col.Key]
 
-                # 2. Convert the current value to the optimal unit
                 $convertedCurrent = Convert -Value $currentVal -FromUnit $col.Unit -ToUnit $optUnit
-
-                # 3 & 4. Determine format based on unit type and append the unit string
                 $currentFmt = Format-Value -Value $convertedCurrent -Unit $optUnit
+
                 if ($null -ne $baseVal -and $baseVal -ne 0) {
+                    # Baseline calculation and ratio mapping
                     $ratio = $currentVal / $baseVal
-                    $ratioStr = "{0:N2}" -f $ratio
+
+                    # Optional: Check if we have Standard Deviation to calculate RatioSD
+                    $parentPath = if ($col.Key.LastIndexOf('.') -gt 0) { $col.Key.Substring(0, $col.Key.LastIndexOf('.')) } else { $null }
+                    $currentSd = if ($parentPath) { Get-NestedProperty -obj $bench -path "$parentPath.StandardDeviation" } else { $null }
+                    $baseSd = if ($parentPath) { Get-NestedProperty -obj $baseline -path "$parentPath.StandardDeviation" } else { $null }
+
+                    # Build Ratio display string with propagation of uncertainty if SD is available
+                    if ($null -ne $currentSd -and $null -ne $baseSd -and $currentVal -ne 0) {
+                        $ratioSd = $ratio * [math]::Sqrt([math]::Pow($currentSd / $currentVal, 2) + [math]::Pow($baseSd / $baseVal, 2))
+                        $ratioStr = "{0:N2} ± {1:N2}" -f $ratio, $ratioSd
+                    } else {
+                        $ratioStr = "{0:N2}" -f $ratio
+                    }
+
                     $cellText = "$currentFmt ($ratioStr)"
 
-                    # Check Threshold limits (regressions)
+                    # Evaluate Threshold limits (Regressions)
                     if ($col.Threshold -gt 1 -and $ratio -gt $col.Threshold) {
                         $isFailed = $true
                     } elseif ($col.Threshold -lt 1 -and $ratio -lt $col.Threshold) {
                         $isFailed = $true
                     }
-                    
-                    #Check inverted Threshold limits (improvements)
+
+                    # Evaluate Inverted Threshold limits (Improvements)
                     if ($col.Threshold -gt 1 -and $ratio -lt (1 / $col.Threshold)) {
                         $isImproved = $true
                     } elseif ($col.Threshold -lt 1 -and $ratio -gt (1 / $col.Threshold)) {
                         $isImproved = $true
                     }
-                    
+
                 } else {
                     $cellText = $currentFmt
                 }
             }
 
-            # Generate status indicators dynamically to prevent file encoding issues
-            $star      = [char]::ConvertFromUtf32(0x2B50)       # (a star) Best value
+            # Status indicators
+            $star      = [char]::ConvertFromUtf32(0x2B50)       # ⭐ Best value
             $improved  = [char]::ConvertFromUtf32(0x1F7E2)      # 🟢 Performance improvement
             $regressed = [char]::ConvertFromUtf32(0x1F534)      # 🔴 Performance regression
 
-            # 1. Format regression / improvement state using standard Markdown bolding
             if ($isFailed) {
                 $overallFailure = $true
                 $hasRegressions = $true
@@ -313,12 +338,12 @@ foreach ($group in $groupedBenchmarks) {
                 $cellText = "**$cellText** $improved"
             }
 
-            # 2. Check if this is the best value across the row
+            # Best value star logic
             $isBest = ($bestValues.Contains($col.Key) -and $currentVal -eq $bestValues[$col.Key])
             if ($isBest) {
                 $cellText = "$cellText $star"
             }
-            
+
             $rowCells.Add($cellText)
         }
 
@@ -326,12 +351,12 @@ foreach ($group in $groupedBenchmarks) {
         $md.AppendLine("| $(($rowCells -join ' | ')) |") | Out-Null
     }
 
-    #update bench group status indicator
+    # Update bench group status indicator
     $regressionIndicator = if ($hasRegressions) {":red_circle:"} else { "" }
-    $md.Replace("{{BENCH_HASREGRESSIONS}}", $regressionIndicator )
+    $md.Replace("{{BENCH_HASREGRESSIONS}}", $regressionIndicator ) | Out-Null
 
     $improvementIndicator = if ($hasImprovements) {":green_circle:"} else { "" }
-    $md.Replace("{{BENCH_HASIMPROVEMENTS}}", $improvementIndicator )
+    $md.Replace("{{BENCH_HASIMPROVEMENTS}}", $improvementIndicator ) | Out-Null
 
     $md.AppendLine("</details>") | Out-Null
     $md.AppendLine() | Out-Null
@@ -347,7 +372,7 @@ if (-not (Test-Path $outDir)) {
 $statusEmoji = if ($overallFailure) { ":no_entry_sign:" } else { ":thumbsup:" }
 $md.Replace("{{STATUS_EMOJI}}", $statusEmoji) | Out-Null
 
-#close top level collapsible details
+# Close top level collapsible details
 $md.AppendLine("</details>") | Out-Null
 
 # Output to Markdown file

@@ -10,18 +10,18 @@ public class AllNet11PreviewsConfig: ManualConfig
     public AllNet11PreviewsConfig()
     {
         var preview3 = Job.Default
+            .WithId(".NET 11 Preview 3")
             .WithToolchain(CsProjCoreToolchain.From(new NetCoreAppSettings(
                 targetFrameworkMoniker: "net11.0",
-                runtimeFrameworkVersion: "11.0.0-preview.3.24172.9", 
-                name: ".NET 11 P3")))
-            .WithId("Preview3");
+                runtimeFrameworkVersion: "11.0.0-preview.3.24172.9",
+                name: ".NET 11 P3")));
 
         var preview4 = Job.Default
+            .WithId(".NET 11 Preview 4")
             .WithToolchain(CsProjCoreToolchain.From(new NetCoreAppSettings(
                 targetFrameworkMoniker: "net11.0",
                 runtimeFrameworkVersion: "11.0.0-preview.4.26230.115", 
                 name: ".NET 11 P4")))
-            .WithId("Preview4")
             .AsBaseline();
 
         AddJob(preview3, preview4);
