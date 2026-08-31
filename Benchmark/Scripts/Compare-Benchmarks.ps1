@@ -129,15 +129,14 @@ function Render-ExecutionContext-Element {
     $md.AppendLine($result) | Out-Null
 }
 
-# 3. Create a sorted list of benchmarks by FullName descending
-$sortedBenchmarks = $benchJson.Benchmarks | Sort-Object FullName -Descending
+# 3. Create a sorted list of benchmarks by DisplayInfo (guarantees unique row mapping)
+$sortedBenchmarks = $benchJson.Benchmarks | Sort-Object DisplayInfo -Descending
 
 $md = [System.Text.StringBuilder]::new()
 
 # 4. Write title and comment anchor tag into Markdown file
 $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null
 
-# FIX (a): Render Warning callout at root Markdown level (outside <details>)
 if ($isComparingAgainstSelf) {
     $md.AppendLine("> [!WARNING]") | Out-Null
     $md.AppendLine("> No baseline JSON found so this run compared the benchmark result against itself.") | Out-Null
@@ -162,7 +161,7 @@ $md.AppendLine("") | Out-Null
 
 $overallFailure = $false
 
-# FIX (d & e): Group benchmarks by Type (Benchmark Class) instead of LogicalGroupKey
+# Group benchmarks by Type (Benchmark Class)
 $groupedBenchmarks = $sortedBenchmarks | Group-Object Type
 
 foreach ($group in $groupedBenchmarks) {
@@ -179,14 +178,14 @@ foreach ($group in $groupedBenchmarks) {
     $md.AppendLine("") | Out-Null
     $md.AppendLine("</summary>") | Out-Null
 
-    # Gather all unique parameters for this group
+    # Gather all unique parameters for this group using DisplayInfo to prevent overwrites
     $allParamKeys = [System.Collections.Generic.List[string]]::new()
     $groupParamsMap = @{}
 
     foreach ($bench in $group.Group) {
         $pString = if ($bench.Parameters) { $bench.Parameters } else { "" }
         $parsedParams = Get-ParsedParameters -ParamString $pString
-        $groupParamsMap[$bench.FullName] = $parsedParams
+        $groupParamsMap[$bench.DisplayInfo] = $parsedParams
 
         foreach ($key in $parsedParams.Keys) {
             if ($key -notin $allParamKeys) {
@@ -199,9 +198,18 @@ foreach ($group in $groupedBenchmarks) {
     $headerCells = [System.Collections.Generic.List[string]]::new()
     $separatorCells = [System.Collections.Generic.List[string]]::new()
 
-    # FIX (b): Always include "Method" as the first column for every group
+    # Always include "Method" as the first column
     $headerCells.Add("Method")
     $separatorCells.Add(":---")
+
+    # Dynamically evaluate if Multiple Runtimes are present in this group
+    $uniqueRuntimes = @($group.Group | Select-Object -ExpandProperty RuntimeName -Unique | Where-Object { $_ })
+    $hasMultipleRuntimes = $uniqueRuntimes.Count -gt 1
+
+    if ($hasMultipleRuntimes) {
+        $headerCells.Add("Runtime")
+        $separatorCells.Add(":---")
+    }
 
     # Add dynamic parameter headers
     foreach ($k in $allParamKeys) {
@@ -244,16 +252,23 @@ foreach ($group in $groupedBenchmarks) {
 
     # Iterate through the benchmarks in the group
     foreach ($bench in $group.Group) {
-        $baseline = $baseJson.Benchmarks | Where-Object FullName -eq $bench.FullName | Select-Object -First 1
+        # Strict baseline lookup using DisplayInfo (ensures exact Job and Params match)
+        $baseline = $baseJson.Benchmarks | Where-Object DisplayInfo -eq $bench.DisplayInfo | Select-Object -First 1
 
         $rowCells = [System.Collections.Generic.List[string]]::new()
 
-        # FIX (b): Render MethodTitle in the first cell of every row
+        # Render MethodTitle in the first cell
         $methodTitleVal = if ($bench.MethodTitle) { $bench.MethodTitle.Replace('|', '-') } else { "N/A" }
         $rowCells.Add($methodTitleVal)
 
-        # Render dynamic parameter cells
-        $pDict = $groupParamsMap[$bench.FullName]
+        # Render Runtime column if required
+        if ($hasMultipleRuntimes) {
+            $runtimeVal = if ($bench.RuntimeName) { $bench.RuntimeName.Replace('|', '-') } else { "N/A" }
+            $rowCells.Add($runtimeVal)
+        }
+
+        # Render dynamic parameter cells safely mapped via DisplayInfo
+        $pDict = $groupParamsMap[$bench.DisplayInfo]
         foreach ($k in $allParamKeys) {
             $val = if ($pDict.Contains($k)) { $pDict[$k] } else { "N/A" }
             $rowCells.Add($val.Replace('|', '-'))
