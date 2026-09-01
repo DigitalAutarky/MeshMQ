@@ -28,11 +28,7 @@ public class PartitionBenchmark
     
     
     [Params(100, 1000, 10000)]
-    public int WriteBufferSize { get; set; }
-    
-    [Params(100, 1000, 10000)]
-    public int ReadBatchSize { get; set; }
-    
+    public int N { get; set; }
     
     [IterationSetup]
     public async ValueTask IterationSetup()
@@ -42,8 +38,8 @@ public class PartitionBenchmark
         _persistence = await PersistenceProviderFactory.CreateFileBasedPersistenceAsync<Envelope<string>>(
             "topic", "queue", 1, HighWatermark, LowWatermark, PersistenceCapacity, _dataFile.FileName, _indexFile.FileName);
 
-        var writePolicy = new StandardChannelPolicy(maxDelayInterval: Timeout.InfiniteTimeSpan, bufferSize: WriteBufferSize);
-        var executionPolicy = new SingleShotPolicy<string>(ReadBatchSize, Timeout.InfiniteTimeSpan);
+        var writePolicy = new StandardChannelPolicy(maxDelayInterval: Timeout.InfiniteTimeSpan, bufferSize: N);
+        var executionPolicy = new SingleShotPolicy<string>(N, Timeout.InfiniteTimeSpan);
         _consumer = new NoOpStringConsumer(writePolicy,  executionPolicy, WriteCount);
 
         var deadletterHandler = new DeadLetterHandler<string>(WriteCount);
@@ -61,17 +57,11 @@ public class PartitionBenchmark
     }
     
     [Benchmark]
-    public async Task EndToEndBenchmark()
+    public async Task Partition()
     {
         // do not await AcceptAsync here or you will cause a deadlock
         for (var i = 0; i < WriteCount; i++) _partition!.AcceptAsync(_item);
         await _consumer!.SignalDone.WaitAsync(CancellationToken.None);
-    }
-    
-    [Benchmark]
-    public async Task TestMultipleBenchmarksSameClass()
-    {
-        await Task.Delay(10);
     }
     
     private static Envelope<T> GenerateTestMessage<T>(string id, T message)
