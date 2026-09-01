@@ -45,7 +45,6 @@ public class AugmentedJsonExporter : IExporter
             AddJobId(jsonBenchmark, report);
             AddExplicitRuntime(jsonBenchmark, report, summary);
             AddBaselineDescriptor(jsonBenchmark, report);
-            AddLogicalGroupKey(jsonBenchmark, summary, report);
             AddRatios(jsonBenchmark, report, summary);
         }
 
@@ -71,9 +70,11 @@ public class AugmentedJsonExporter : IExporter
     
     private static void AddExplicitRuntime(JsonObject jsonBenchmark, BenchmarkReport report, Summary summary)
     {
-        var runtimeName = report.BenchmarkCase.Job.Environment.Runtime?.Name 
-            ?? summary.HostEnvironmentInfo.RuntimeVersion;
-        
+        var jobId = report.BenchmarkCase.Job.Id;
+        var runtimeName = (string.IsNullOrEmpty(jobId) || jobId != "Default")
+            ? report.BenchmarkCase.Job.Environment.Runtime?.Name ?? summary.HostEnvironmentInfo.RuntimeVersion
+            : jobId;
+    
         jsonBenchmark["RuntimeName"] = runtimeName;
     }
 
@@ -81,12 +82,6 @@ public class AugmentedJsonExporter : IExporter
     {
         var isBaseline = report.BenchmarkCase.Descriptor.Baseline;
         jsonBenchmark["IsBaseline"] = isBaseline;
-    }
-    
-    private void AddLogicalGroupKey(JsonObject jsonBenchmark, Summary summary, BenchmarkReport report)
-    {
-        var groupKey = summary.GetLogicalGroupKey(report.BenchmarkCase);
-        jsonBenchmark["LogicalGroupKey"] = groupKey;
     }
 
     private static void AddRatios(JsonObject jsonBenchmark, BenchmarkReport report, Summary summary)

@@ -65,7 +65,7 @@ jobs:
       - name: Run Benchmarks
         working-directory: ./Benchmark
         run: |
-          dotnet run -c Release -- --filter "*" --exporters github fulljson --join --artifacts ./BenchmarkDotNet.Artifacts --runtimes Net80
+          dotnet run -c Release -- --filter "*" --exporters github fulljson --join --artifacts ./BenchmarkDotNet.Artifacts
 
       - name: Upload Benchmark Artifact
         if: github.event_name == 'push'
