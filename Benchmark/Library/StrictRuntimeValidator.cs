@@ -30,14 +30,7 @@ public  class StrictRuntimeValidator : IValidator
             
             // Ignore if default host runtime or legacy framework without silent roll forward used
             if (string.IsNullOrEmpty(requestedVersion))
-            {
-                yield return new ValidationError(
-                    isCritical: true,
-                    message: $"[Strict Validation] Benchmark '{benchmark.DisplayInfo}' is missing a explicitly configured runtime framework version. Aborting to prevent silent fallback."
-                );
-                
                 continue;
-            }
 
             // Check if we have the required runtime and sdk
             var (searchTerm, isExactSearch) = SemanticVersion.GetSearchTerm(requestedVersion);

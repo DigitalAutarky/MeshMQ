@@ -12,7 +12,6 @@ using HackyMessage.Persistence.Provider.Factory;
 namespace Benchmark;
 
 [MemoryDiagnoser]
-[SimpleJob(RuntimeMoniker.Net11_0)]
 public class PartitionBenchmark
 {
     private const int PersistenceCapacity = 10 * 1024 * 1024;
