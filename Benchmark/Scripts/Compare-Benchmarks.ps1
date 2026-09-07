@@ -22,6 +22,7 @@ param(
 # 0. Imports
 Import-Module "$PSScriptRoot/Conversion.psm1" -Force
 Import-Module "$PSScriptRoot/Format.psm1" -Force
+Import-Module "$PSScriptRoot/Get-BenchmarkGroupName.psm1" -Force
 
 # 1. Assert exactly 1 benchmark file and 1 baseline file
 $benchFiles = Get-ChildItem -Path $BenchmarkPath -Filter "*-report-full-augmented.json"
@@ -129,9 +130,7 @@ function Render-ExecutionContext-Element {
     $md.AppendLine($result) | Out-Null
 }
 
-# 3. Create a sorted list of benchmarks by DisplayInfo (guarantees unique row mapping)
-$sortedBenchmarks = $benchJson.Benchmarks | Sort-Object DisplayInfo -Descending
-
+# 3. Result Variable containing the rendered markdown
 $md = [System.Text.StringBuilder]::new()
 
 # 4. Write title and comment anchor tag into Markdown file
@@ -162,10 +161,11 @@ $md.AppendLine("") | Out-Null
 $overallFailure = $false
 
 # Group benchmarks by Type (Benchmark Class)
-$groupedBenchmarks = $sortedBenchmarks | Group-Object Type
+$groupedBenchmarks = $benchJson.Benchmarks | Group-Object GroupingKey
 
 foreach ($group in $groupedBenchmarks) {
-    $groupKey = $group.Name
+    $groupKey = Get-BenchmarkGroupName -Group $group
+    $group.Group = $group.Group | Sort-Object SortingKey -Ascending
 
     $hasRegressions = $false
     $hasImprovements = $false
@@ -202,14 +202,9 @@ foreach ($group in $groupedBenchmarks) {
     $headerCells.Add("Method")
     $separatorCells.Add(":---")
 
-    # Dynamically evaluate if Multiple Runtimes are present in this group
-    $uniqueRuntimes = @($group.Group | Select-Object -ExpandProperty RuntimeName -Unique | Where-Object { $_ })
-    $hasMultipleRuntimes = $uniqueRuntimes.Count -gt 1
-
-    if ($hasMultipleRuntimes) {
-        $headerCells.Add("Runtime")
-        $separatorCells.Add(":---")
-    }
+    # Always include "JobId" as the second column
+    $headerCells.Add("JobId")
+    $separatorCells.Add(":---")
 
     # Add dynamic parameter headers
     foreach ($k in $allParamKeys) {
@@ -261,11 +256,9 @@ foreach ($group in $groupedBenchmarks) {
         $methodTitleVal = if ($bench.MethodTitle) { $bench.MethodTitle.Replace('|', '-') } else { "N/A" }
         $rowCells.Add($methodTitleVal)
 
-        # Render Runtime column if required
-        if ($hasMultipleRuntimes) {
-            $runtimeVal = if ($bench.RuntimeName) { $bench.RuntimeName.Replace('|', '-') } else { "N/A" }
-            $rowCells.Add($runtimeVal)
-        }
+        # Render Job Id in the second column
+        $jobId = if ($bench.JobId) { $bench.JobId.Replace('|', '-') } else { "N/A" }
+        $rowCells.Add($jobId)
 
         # Render dynamic parameter cells safely mapped via DisplayInfo
         $pDict = $groupParamsMap[$bench.DisplayInfo]

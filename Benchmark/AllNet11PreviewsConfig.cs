@@ -1,4 +1,5 @@
 using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Environments;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Toolchains.CsProj;
 using BenchmarkDotNet.Toolchains.DotNetCli;
@@ -11,6 +12,7 @@ public class AllNet11PreviewsConfig: ManualConfig
     {
         var preview4 = Job.Default
             .WithId(".NET 11 Preview 4")
+            .WithRuntime(CoreRuntime.Core11_0)
             .WithToolchain(CsProjCoreToolchain.From(new NetCoreAppSettings(
                 targetFrameworkMoniker: "net11.0",
                 runtimeFrameworkVersion: "11.0.0-preview.4.26230.115", 
@@ -19,6 +21,7 @@ public class AllNet11PreviewsConfig: ManualConfig
         
         var preview7 = Job.Default
             .WithId(".NET 11 Preview 7")
+            .WithRuntime(CoreRuntime.Core11_0)
             .WithToolchain(CsProjCoreToolchain.From(new NetCoreAppSettings(
                 targetFrameworkMoniker: "net11.0",
                 runtimeFrameworkVersion: "11.0.0-preview.7.26381.103",

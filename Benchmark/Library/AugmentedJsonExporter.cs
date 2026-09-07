@@ -29,23 +29,44 @@ public class AugmentedJsonExporter : IExporter
             return;
         }
 
-        // 3. jsonRoot is now safely accessible to the rest of the method
+        // 3. Read JSON to be augmented
         var jsonContent = await File.ReadAllTextAsync(originalFilePath, cancellationToken);
         var jsonRoot = JsonNode.Parse(jsonContent)!.AsObject();
         var jsonBenchmarks = jsonRoot["Benchmarks"]!.AsArray();
-            
+        
+        // Retrieve benchmark cases in BDN's exact summary output order
+        var orderedCases = summary.Orderer.GetSummaryOrder(summary.BenchmarksCases, summary);
+
+        //Group by BDN's active logical group key (respects [GroupBenchmarksBy] and custom IGroupingOrderer)
+        var bdnGroups = orderedCases
+            .GroupBy(bCase => summary.Orderer.GetLogicalGroupKey(summary.BenchmarksCases, bCase));
+        
         // 4. Augment the JSON
-        foreach (var report in summary.Reports)
+        var groupKey = 0;
+        foreach (var group in bdnGroups)
         {
-            var targetKey = report.BenchmarkCase.DisplayInfo;
-            var jsonNode = jsonBenchmarks.FirstOrDefault(n => n?["DisplayInfo"]?.ToString() == targetKey);
-            if (jsonNode == null) continue;
+            groupKey++;
             
-            var jsonBenchmark = jsonNode.AsObject();
-            AddJobId(jsonBenchmark, report);
-            AddExplicitRuntime(jsonBenchmark, report, summary);
-            AddBaselineDescriptor(jsonBenchmark, report);
-            AddRatios(jsonBenchmark, report, summary);
+            // Map BenchmarkCases back to their respective BenchmarkReports
+            var groupReports = group.Select(bCase => summary[bCase])
+                .Where(report => report != null);
+
+            var sortKey = 0;
+            foreach (var report in groupReports)
+            {
+                sortKey++;
+                
+                var targetKey = report.BenchmarkCase.DisplayInfo;
+                var jsonNode = jsonBenchmarks.FirstOrDefault(n => n?["DisplayInfo"]?.ToString() == targetKey);
+                if (jsonNode == null) continue;
+            
+                var jsonBenchmark = jsonNode.AsObject();
+                AddCategory(jsonBenchmark, report);
+                AddJobId(jsonBenchmark, report);
+                AddExplicitRuntime(jsonBenchmark, report, summary);
+                AddBaselineDescriptor(jsonBenchmark, report);
+                AddGroupAndSortKeys(jsonBenchmark, groupKey, sortKey);
+            }
         }
 
         // 5. Generate a dynamic filename based entirely on the original
@@ -57,11 +78,24 @@ public class AugmentedJsonExporter : IExporter
         var options = new JsonSerializerOptions { WriteIndented = true };
         await File.WriteAllTextAsync(newFilePath, jsonRoot.ToJsonString(options), cancellationToken);
 
+        // 7. Clean up the default file so you only keep your augmented one
         File.Delete(originalFilePath);
         logger.WriteLineInfo($"Exported augmented JSON to: {newFilePath}");
     }
 
-    // 7. Clean up the default file so you only keep your augmented one
+    private static void AddGroupAndSortKeys(JsonObject jsonBenchmark, int groupKey, int sortKey)
+    {
+        jsonBenchmark["GroupingKey"] = groupKey;
+        jsonBenchmark["SortingKey"] = sortKey;
+    }
+
+    private static void AddCategory(JsonObject jsonBenchmark, BenchmarkReport report)
+    {
+        //benchmark dotnet groups by the exact combination of tags so we can combine them
+        var categories = JsonSerializer.SerializeToNode(report.BenchmarkCase.Descriptor.Categories);
+        jsonBenchmark["Categories"] = categories;
+    }
+    
     private static void AddJobId(JsonObject jsonBenchmark, BenchmarkReport report)
     {
         var jobId = report.BenchmarkCase.Job.Id;
@@ -71,7 +105,7 @@ public class AugmentedJsonExporter : IExporter
     private static void AddExplicitRuntime(JsonObject jsonBenchmark, BenchmarkReport report, Summary summary)
     {
         var jobId = report.BenchmarkCase.Job.Id;
-        var runtimeName = (string.IsNullOrEmpty(jobId) || jobId != "Default")
+        var runtimeName = (string.IsNullOrEmpty(jobId) || jobId == "Default")
             ? report.BenchmarkCase.Job.Environment.Runtime?.Name ?? summary.HostEnvironmentInfo.RuntimeVersion
             : jobId;
     
