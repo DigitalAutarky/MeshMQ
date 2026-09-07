@@ -1,5 +1,6 @@
 using Benchmark.Common;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Jobs;
 using HackyMessage.Core;
 using HackyMessage.Core.Partition;
 using HackyMessage.Core.Policy.Buffer;
@@ -11,6 +12,7 @@ using HackyMessage.Persistence.Provider.Factory;
 namespace Benchmark;
 
 [MemoryDiagnoser]
+[SimpleJob(RuntimeMoniker.Net11_0)]
 public class PartitionBenchmark
 {
     private const int PersistenceCapacity = 10 * 1024 * 1024;

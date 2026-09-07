@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Exporters.Json;
 using BenchmarkDotNet.Reports;
+using BenchmarkDotNet.Validators;
 
 namespace Benchmark;
 using BenchmarkDotNet.Running;
@@ -15,6 +16,7 @@ internal static class Program
         var config = ManualConfig.Create(DefaultConfig.Instance)
             .WithOptions(ConfigOptions.JoinSummary)
             .AddValidator(new StrictRuntimeValidator())
+            .AddValidator(ExecutionValidator.FailOnError)
             .AddExporter(new AugmentedJsonExporter());
 
         // 2. Run benchmarks
