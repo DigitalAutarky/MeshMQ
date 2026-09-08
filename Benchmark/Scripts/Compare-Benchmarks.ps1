@@ -165,7 +165,7 @@ $groupedBenchmarks = $benchJson.Benchmarks | Group-Object GroupingKey
 
 foreach ($group in $groupedBenchmarks) {
     $groupKey = Get-BenchmarkGroupName -Group $group
-    $group.Group = $group.Group | Sort-Object SortingKey -Ascending
+    $group.Group = $group.Group | Sort-Object SortingKey
 
     $hasRegressions = $false
     $hasImprovements = $false
