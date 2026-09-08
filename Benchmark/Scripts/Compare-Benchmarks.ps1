@@ -165,7 +165,7 @@ $groupedBenchmarks = $benchJson.Benchmarks | Group-Object GroupingKey
 
 foreach ($group in $groupedBenchmarks) {
     $groupKey = Get-BenchmarkGroupName -Group $group
-    $group.Group = $group.Group | Sort-Object SortingKey
+    $sortedGroup = $group.Group | Sort-Object SortingKey
 
     $hasRegressions = $false
     $hasImprovements = $false
@@ -182,7 +182,7 @@ foreach ($group in $groupedBenchmarks) {
     $allParamKeys = [System.Collections.Generic.List[string]]::new()
     $groupParamsMap = @{}
 
-    foreach ($bench in $group.Group) {
+    foreach ($bench in $sortedGroup) {
         $pString = if ($bench.Parameters) { $bench.Parameters } else { "" }
         $parsedParams = Get-ParsedParameters -ParamString $pString
         $groupParamsMap[$bench.DisplayInfo] = $parsedParams
@@ -229,13 +229,13 @@ foreach ($group in $groupedBenchmarks) {
     $unitTypes = @{}
 
     foreach ($col in $displayCols) {
-        $validValues = @($group.Group | ForEach-Object { Get-NestedProperty -obj $_ -path $col.Key } | Where-Object { $null -ne $_ })
+        $validValues = @($sortedGroup | ForEach-Object { Get-NestedProperty -obj $_ -path $col.Key } | Where-Object { $null -ne $_ })
 
         if ($validValues.Count -gt 0) {
             $optimalUnits[$col.Key] = Get-Optimal-DisplayUnit -Values ([double[]]$validValues) -Unit $col.Unit
             $unitTypes[$col.Key] = Get-Unit-Type -Unit $optimalUnits[$col.Key]
 
-            if ($group.Group.Count -gt 1) {
+            if ($sortedGroup.Count -gt 1) {
                 if ($col.Threshold -gt 1) {
                     $bestValues[$col.Key] = ($validValues | Measure-Object -Minimum).Minimum
                 } elseif ($col.Threshold -lt 1) {
@@ -246,7 +246,7 @@ foreach ($group in $groupedBenchmarks) {
     }
 
     # Iterate through the benchmarks in the group
-    foreach ($bench in $group.Group) {
+    foreach ($bench in $sortedGroup) {
         # Strict baseline lookup using DisplayInfo (ensures exact Job and Params match)
         $baseline = $baseJson.Benchmarks | Where-Object DisplayInfo -eq $bench.DisplayInfo | Select-Object -First 1
 
