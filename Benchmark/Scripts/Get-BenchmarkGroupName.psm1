@@ -2,7 +2,7 @@ function Get-BenchmarkGroupName {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [System.Management.Automation.GroupInfo]$Group
+        $Group
     )
 
     $items = $Group.Group
