@@ -1,8 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.Json.Nodes;
-using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Exporters.Json;
-using BenchmarkDotNet.Reports;
+﻿using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Validators;
 
 namespace Benchmark;
@@ -14,7 +10,6 @@ internal static class Program
     {
         // 1. Setup configuration
         var config = ManualConfig.Create(DefaultConfig.Instance)
-            .WithOptions(ConfigOptions.JoinSummary)
             .AddValidator(new StrictRuntimeValidator())
             .AddValidator(ExecutionValidator.FailOnError)
             .AddExporter(new AugmentedJsonExporter());

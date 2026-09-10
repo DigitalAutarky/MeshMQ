@@ -16,7 +16,10 @@ param(
     [string]$CommentTag,
 
     [Parameter(Mandatory=$true)]
-    [string[]]$Display
+    [string[]]$Display,
+
+    [Parameter(Mandatory=$false)]
+    [string[]]$Compare
 )
 
 # 0. Imports
@@ -58,6 +61,21 @@ $displayCols = foreach ($d in $Display) {
         Name = $dict['name']
         Unit = $dict['unit']
         Threshold = [double]$dict['threshold']
+    }
+}
+
+# Helper: Parse the Compare argument strings into structured objects
+$compareCols = foreach ($c in $Compare) {
+    if ([string]::IsNullOrWhiteSpace($c)) { continue }
+    $dict = @{}
+    $c -split '&' | ForEach-Object {
+        $kv = $_ -split '='
+        $dict[$kv[0].ToLower()] = $kv[1]
+    }
+    [PSCustomObject]@{
+        Key = $dict['key']
+        Name = $dict['name']
+        BiggerIsBetter = [System.Convert]::ToBoolean($dict['biggerisbetter'])
     }
 }
 
@@ -166,7 +184,8 @@ $groupedBenchmarks = $benchJson.Benchmarks | Group-Object GroupingKey
 foreach ($group in $groupedBenchmarks) {
     $groupKey = Get-BenchmarkGroupName -Group $group
     $sortedGroup = $group.Group | Sort-Object SortingKey
-
+    $groupBaseline = $sortedGroup | Where-Object { $_.IsBaseline } | Select-Object -First 1
+    
     $hasRegressions = $false
     $hasImprovements = $false
 
@@ -216,6 +235,14 @@ foreach ($group in $groupedBenchmarks) {
     foreach ($col in $displayCols) {
         $headerCells.Add($col.Name)
         $separatorCells.Add("---:")
+    }
+
+    # Add compare column headers
+    if ($null -ne $compareCols) {
+        foreach ($col in $compareCols) {
+            $headerCells.Add($col.Name)
+            $separatorCells.Add("---:")
+        }
     }
 
     # Write table structure
@@ -344,6 +371,26 @@ foreach ($group in $groupedBenchmarks) {
             $rowCells.Add($cellText)
         }
 
+        # Render compare ratio columns against the group baseline
+        if ($null -ne $compareCols) {
+            foreach ($col in $compareCols) {
+                if ($null -ne $groupBaseline) {
+                    $currentVal = Get-NestedProperty -obj $bench -path $col.Key
+                    $baseVal = Get-NestedProperty -obj $groupBaseline -path $col.Key
+
+                    # Only calculate ratio if we have valid non-zero baseline data
+                    if ($null -ne $currentVal -and $null -ne $baseVal -and $baseVal -ne 0) {
+                        $ratio = $currentVal / $baseVal
+                        $rowCells.Add("{0:N2}" -f $ratio)
+                    } else {
+                        $rowCells.Add("N/A")
+                    }
+                } else {
+                    $rowCells.Add("N/A")
+                }
+            }
+        }
+        
         # Write row to Markdown
         $md.AppendLine("| $(($rowCells -join ' | ')) |") | Out-Null
     }

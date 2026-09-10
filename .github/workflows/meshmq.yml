@@ -104,7 +104,6 @@ jobs:
             -Display `
               "key=Statistics.Mean&name=Mean&unit=ns&threshold=1.2", `
               "key=Statistics.Max&name=Max&unit=ns&threshold=1.2", `
-              "key=Memory.BytesAllocatedPerOperation&name=Allocation&unit=B&threshold=1.2", `
-              "key=Memory.Gen0Collections&name=Gen0&unit=count&threshold=2", `
-              "key=Memory.Gen1Collections&name=Gen1&unit=count&threshold=2", `
-              "key=Memory.Gen2Collections&name=Gen2&unit=count&threshold=2"
+              "key=Memory.BytesAllocatedPerOperation&name=Allocation&unit=B&threshold=1.2" `
+            -Compare `
+              "key=Statistics.Mean&name=Ratio&biggerIsBetter=false"

@@ -5,7 +5,6 @@ using BenchmarkDotNet.Jobs;
 namespace Benchmark;
 
 [MemoryDiagnoser]
-//[SimpleJob(RuntimeMoniker.Net10_0)]
 public class BaselineMethodBenchmark
 {
     [Params(100, 1000)]
