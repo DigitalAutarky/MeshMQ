@@ -50,7 +50,9 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 11.0.100-preview.4.26230.115
+          dotnet-version: |
+            11.0.100-preview.4.26230.115
+            11.0.100-preview.7.26381.103
 
       - name: Clean Previous Results
         working-directory: ./Benchmark
@@ -62,8 +64,10 @@ jobs:
       
       - name: Run Benchmarks
         working-directory: ./Benchmark
+        env:
+          DOTNET_ROLL_FORWARD: Disable
         run: |
-          dotnet run -c Release -- --filter "*" --exporters github fulljson --join
+          dotnet run -c Release -- --filter "*" --exporters github fulljson --join --artifacts ./BenchmarkDotNet.Artifacts
 
       - name: Upload Benchmark Artifact
         if: github.event_name == 'push'
@@ -98,5 +102,8 @@ jobs:
             -CommentTag       "benchmark-result" `
             -FailOnRegression $false `
             -Display `
-              "key=Statistics.Mean&name=Duration&threshold=1.2", `
-              "key=Memory.BytesAllocatedPerOperation&name=Allocation&threshold=1.2"
+              "key=Statistics.Mean&name=Mean&unit=ns&threshold=1.2", `
+              "key=Statistics.Max&name=Max&unit=ns&threshold=1.2", `
+              "key=Memory.BytesAllocatedPerOperation&name=Allocation&unit=B&threshold=1.2" `
+            -Compare `
+              "key=Statistics.Mean&name=Ratio&biggerIsBetter=false"
