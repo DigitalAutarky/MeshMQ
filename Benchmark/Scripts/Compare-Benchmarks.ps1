@@ -272,6 +272,33 @@ foreach ($group in $groupedBenchmarks) {
         }
     }
 
+    # Determine best ratios for compare columns
+    $bestRatios = @{}
+    if ($null -ne $compareCols -and $null -ne $groupBaseline -and $sortedGroup.Count -gt 1) {
+        foreach ($col in $compareCols) {
+            $baseVal = Get-NestedProperty -obj $groupBaseline -path $col.Key
+            if ($null -ne $baseVal -and $baseVal -ne 0) {
+                $validRatios = @($sortedGroup | ForEach-Object {
+                    $cVal = Get-NestedProperty -obj $_ -path $col.Key
+                    if ($null -ne $cVal) { $cVal / $baseVal }
+                })
+
+                if ($validRatios.Count -gt 0) {
+                    if ($col.BiggerIsBetter) {
+                        $bestRatios[$col.Key] = ($validRatios | Measure-Object -Maximum).Maximum
+                    } else {
+                        $bestRatios[$col.Key] = ($validRatios | Measure-Object -Minimum).Minimum
+                    }
+                }
+            }
+        }
+    }
+
+    # Status indicators
+    $star      = [char]::ConvertFromUtf32(0x2B50)       # ⭐ Best value
+    $improved  = [char]::ConvertFromUtf32(0x1F7E2)      # 🟢 Performance improvement
+    $regressed = [char]::ConvertFromUtf32(0x1F534)      # 🔴 Performance regression
+
     # Iterate through the benchmarks in the group
     foreach ($bench in $sortedGroup) {
         # Strict baseline lookup using DisplayInfo (ensures exact Job and Params match)
@@ -347,12 +374,7 @@ foreach ($group in $groupedBenchmarks) {
                     $cellText = $currentFmt
                 }
             }
-
-            # Status indicators
-            $star      = [char]::ConvertFromUtf32(0x2B50)       # ⭐ Best value
-            $improved  = [char]::ConvertFromUtf32(0x1F7E2)      # 🟢 Performance improvement
-            $regressed = [char]::ConvertFromUtf32(0x1F534)      # 🔴 Performance regression
-
+        
             if ($isFailed) {
                 $overallFailure = $true
                 $hasRegressions = $true
@@ -381,7 +403,14 @@ foreach ($group in $groupedBenchmarks) {
                     # Only calculate ratio if we have valid non-zero baseline data
                     if ($null -ne $currentVal -and $null -ne $baseVal -and $baseVal -ne 0) {
                         $ratio = $currentVal / $baseVal
-                        $rowCells.Add("{0:N2}" -f $ratio)
+                        $cellText = "{0:N2}" -f $ratio
+
+                        # Evaluate best ratio star logic
+                        if ($bestRatios.Contains($col.Key) -and $ratio -eq $bestRatios[$col.Key]) {
+                            $cellText = "$cellText $star"
+                        }
+
+                        $rowCells.Add($cellText)
                     } else {
                         $rowCells.Add("N/A")
                     }
