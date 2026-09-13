@@ -42,10 +42,9 @@ public class AugmentedJsonExporter : IExporter
             .GroupBy(bCase => summary.Orderer.GetLogicalGroupKey(summary.BenchmarksCases, bCase));
         
         // 4. Augment the JSON
-        var groupKey = 0;
         foreach (var group in bdnGroups)
         {
-            groupKey++;
+            var groupKey = group.Key;
             
             // Map BenchmarkCases back to their respective BenchmarkReports
             var groupReports = group.Select(bCase => summary[bCase])
@@ -83,7 +82,7 @@ public class AugmentedJsonExporter : IExporter
         logger.WriteLineInfo($"Exported augmented JSON to: {newFilePath}");
     }
 
-    private static void AddGroupAndSortKeys(JsonObject jsonBenchmark, int groupKey, int sortKey)
+    private static void AddGroupAndSortKeys(JsonObject jsonBenchmark, string groupKey, int sortKey)
     {
         jsonBenchmark["GroupingKey"] = groupKey;
         jsonBenchmark["SortingKey"] = sortKey;

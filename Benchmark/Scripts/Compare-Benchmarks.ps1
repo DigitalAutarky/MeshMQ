@@ -27,10 +27,10 @@ Import-Module "$PSScriptRoot/Conversion.psm1" -Force
 Import-Module "$PSScriptRoot/Format.psm1" -Force
 Import-Module "$PSScriptRoot/Get-BenchmarkGroupName.psm1" -Force
 
-# 1. Assert exactly 1 benchmark file and 1 baseline file
+# 1. Assert benchmark files exist and handle baselines
 $benchFiles = Get-ChildItem -Path $BenchmarkPath -Filter "*-report-full-augmented.json"
-if ($benchFiles.Count -ne 1) {
-    Write-Error "Expected exactly 1 benchmark JSON file in '$BenchmarkPath', found $($benchFiles.Count)."
+if ($benchFiles.Count -eq 0) {
+    Write-Error "Expected at least 1 benchmark JSON file in '$BenchmarkPath', found 0."
     exit 1
 }
 
@@ -40,10 +40,14 @@ if ($baseFiles.Count -eq 0) {
     Write-Warning "No baseline JSON files found. If this is your first pull request you can ignore this warning."
     $baseFiles = $benchFiles # compare benchmark against itself on the first pull request
     $isComparingAgainstSelf = $true
-} elseif ($baseFiles.Count -ne 1) {
-    Write-Error "Expected exactly 1 baseline JSON file in '$BaselinePath', found $($baseFiles.Count)."
-    exit 1
 }
+
+# 2. Parse all benchmark and baseline JSONs and flatten the benchmark arrays
+$allBenchObjects = $benchFiles | ForEach-Object { Get-Content -Path $_.FullName | ConvertFrom-Json }
+$allBaseObjects = $baseFiles | ForEach-Object { Get-Content -Path $_.FullName | ConvertFrom-Json }
+
+$allBenchmarks = $allBenchObjects | Select-Object -ExpandProperty Benchmarks
+$allBaseBenchmarks = $allBaseObjects | Select-Object -ExpandProperty Benchmarks
 
 # 2. Parse the benchmark and baseline JSONs into objects
 $benchJson = Get-Content -Path $benchFiles[0].FullName | ConvertFrom-Json
@@ -171,15 +175,15 @@ $md.AppendLine("</summary>") | Out-Null
 $md.AppendLine("") | Out-Null
 $md.AppendLine("") | Out-Null
 
-Render-ExecutionContext -md $md -bench $benchJson -base $baseJson | Out-Null
+Render-ExecutionContext -md $md -bench $allBenchObjects[0] -base $allBaseObjects[0] | Out-Null
 
 $md.AppendLine("") | Out-Null
 $md.AppendLine("") | Out-Null
 
 $overallFailure = $false
 
-# Group benchmarks by Type (Benchmark Class)
-$groupedBenchmarks = $benchJson.Benchmarks | Group-Object GroupingKey
+# Group benchmarks using bdns logical grouping key
+$groupedBenchmarks = $allBenchmarks | Group-Object GroupingKey
 
 foreach ($group in $groupedBenchmarks) {
     $groupKey = Get-BenchmarkGroupName -Group $group
@@ -302,8 +306,7 @@ foreach ($group in $groupedBenchmarks) {
     # Iterate through the benchmarks in the group
     foreach ($bench in $sortedGroup) {
         # Strict baseline lookup using DisplayInfo (ensures exact Job and Params match)
-        $baseline = $baseJson.Benchmarks | Where-Object DisplayInfo -eq $bench.DisplayInfo | Select-Object -First 1
-
+        $baseline = $allBaseBenchmarks | Where-Object DisplayInfo -eq $bench.DisplayInfo | Select-Object -First 1
         $rowCells = [System.Collections.Generic.List[string]]::new()
 
         # Render MethodTitle in the first cell
