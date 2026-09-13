@@ -67,7 +67,7 @@ jobs:
         env:
           DOTNET_ROLL_FORWARD: Disable
         run: |
-          dotnet run -c Release -- --filter "*" --exporters github fulljson --join --artifacts ./BenchmarkDotNet.Artifacts
+          dotnet run -c Release -- --filter "*" --artifacts ./BenchmarkDotNet.Artifacts
 
       - name: Upload Benchmark Artifact
         if: github.event_name == 'push'
