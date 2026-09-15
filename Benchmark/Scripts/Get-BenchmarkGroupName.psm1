@@ -8,8 +8,8 @@ function Get-BenchmarkGroupName {
     $items = $Group.Group
 
     # 1. Extract unique properties across the group
-    $types     = $items | Select-Object -ExpandProperty Type -Unique | Where-Object { $_ }
-    $methods   = $items | Select-Object -ExpandProperty MethodTitle -Unique | Where-Object { $_ }
+    $types     = @($items | Select-Object -ExpandProperty Type -Unique | Where-Object { $_ })
+    $methods   = @($items | Select-Object -ExpandProperty MethodTitle -Unique | Where-Object { $_ })
     $baselines = $items | Where-Object { $_.IsBaseline -eq $true -or $_.Baseline -eq $true }
     
     # Flatten categories (supports string arrays or nulls)

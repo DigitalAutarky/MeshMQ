@@ -112,54 +112,9 @@ public class AugmentedJsonExporter : IExporter
     }
 
     private static void AddBaselineDescriptor(JsonObject jsonBenchmark, BenchmarkReport report)
-    {
-        var isBaseline = report.BenchmarkCase.Descriptor.Baseline;
+    { 
+        var isBaseline = report.BenchmarkCase.Descriptor.Baseline || report.BenchmarkCase.Job.Meta.Baseline;
         jsonBenchmark["IsBaseline"] = isBaseline;
     }
-
-    private static void AddRatios(JsonObject jsonBenchmark, BenchmarkReport report, Summary summary)
-    {
-        var currentCase = report.BenchmarkCase;
-
-        // Find the baseline for this exact environment/job configuration
-        var baselineCase = summary.BenchmarksCases
-            .FirstOrDefault(c => c.Descriptor.Baseline &&
-                                 c.Job.DisplayInfo == currentCase.Job.DisplayInfo &&
-                                 c.Parameters.DisplayInfo == currentCase.Parameters.DisplayInfo);
-
-        if (baselineCase == null || !summary.HasReport(baselineCase))
-        {
-            SetRatios(jsonBenchmark, null, null);
-            return;
-        }
-
-        var baselineReport = summary[baselineCase];
-                
-        // Ensure both have valid statistics to avoid null references
-        if (report.ResultStatistics == null || baselineReport.ResultStatistics == null)
-        {
-            SetRatios(jsonBenchmark, null, null);
-            return;
-        }
-        
-        var currentMean = report.ResultStatistics.Mean;
-        var baselineMean = baselineReport.ResultStatistics.Mean;
-        var timeRatio = currentMean / baselineMean;
-        
-        var currentMemory = report.GcStats.GetBytesAllocatedPerOperation(report.BenchmarkCase);
-        var baselineMemory = baselineReport.GcStats.GetBytesAllocatedPerOperation(baselineReport.BenchmarkCase);
-        var memoryRatio  = currentMemory / baselineMemory;
-        
-        SetRatios(jsonBenchmark, timeRatio, memoryRatio);
-    }
     
-
-    private static void SetRatios(JsonObject jsonBenchmark, double? timeRatio, double? memoryRatio)
-    {
-        var timeValue = timeRatio != null ? timeRatio.ToString() : "";
-        jsonBenchmark["TimeRatio"] = timeValue;
-        
-        var memoryValue = memoryRatio != null ? memoryRatio.ToString() : "";
-        jsonBenchmark["MemoryRatio"] = memoryValue;
-    }
 }

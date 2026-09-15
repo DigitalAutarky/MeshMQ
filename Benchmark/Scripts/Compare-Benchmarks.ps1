@@ -185,8 +185,18 @@ $overallFailure = $false
 # Group benchmarks using bdns logical grouping key
 $groupedBenchmarks = $allBenchmarks | Group-Object GroupingKey
 
-foreach ($group in $groupedBenchmarks) {
-    $groupKey = Get-BenchmarkGroupName -Group $group
+# Pre-calculate the display name for each group and sort by it
+$sortedGroups = foreach ($group in $groupedBenchmarks) {
+    [PSCustomObject]@{
+        GroupName = Get-BenchmarkGroupName -Group $group
+        Data = $group
+    }
+}
+
+$sortedGroups = $sortedGroups | Sort-Object GroupName
+foreach ($groupWrapper in $sortedGroups) {
+    $group = $groupWrapper.Data
+    $groupKey = $groupWrapper.GroupName
     $sortedGroup = $group.Group | Sort-Object SortingKey
     $groupBaseline = $sortedGroup | Where-Object { $_.IsBaseline } | Select-Object -First 1
     
