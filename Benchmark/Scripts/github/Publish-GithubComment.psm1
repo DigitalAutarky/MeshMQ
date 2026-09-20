@@ -27,7 +27,7 @@ function Publish-GithubComment {
         }
 
         Write-Host "Posting new benchmark comment to PR #$prNumber..."
-        gh pr comment $prNumber --body-file$ComparisonResultPath | Out-Null
+        gh pr comment $prNumber --body-file $ComparisonResultPath | Out-Null
     } else {
         Write-Host "Not running in a Pull Request context. Skipping GitHub CLI comment posting."
     }
