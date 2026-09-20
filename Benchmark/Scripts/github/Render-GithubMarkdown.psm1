@@ -18,7 +18,7 @@ function Render-GithubMarkdown {
 
     # Render Environment
     $md.AppendLine("> <div align=""center"">`n> ") | Out-Null
-    foreach ($env in$ViewModel.Environment) {
+    foreach ($env in $ViewModel.Environment) {
         $result =$env.Current
         if ($env.HasChanged) {$result = "$\color{orange}{\mathbf{\text{$result (was: $($env.Baseline))}}}$" }
         $md.AppendLine("> $result") | Out-Null
@@ -29,7 +29,7 @@ function Render-GithubMarkdown {
     $star      = [char]::ConvertFromUtf32(0x2B50)
     $improved  = [char]::ConvertFromUtf32(0x1F7E2)$regressed = [char]::ConvertFromUtf32(0x1F534)
 
-    foreach ($group in$ViewModel.Groups) {
+    foreach ($group in $ViewModel.Groups) {
         $regInd = if ($group.HasRegressions) { ":red_circle:" } else { "" }
         $impInd = if ($group.HasImprovements) { ":green_circle:" } else { "" }
 

@@ -21,7 +21,7 @@ function Publish-GithubComment {
         $commentsJson = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --paginate | ConvertFrom-Json
         $matchingComments =$commentsJson | Where-Object { $_.body -match "tag:$CommentTag" }
 
-        foreach ($comment in$matchingComments) {
+        foreach ($comment in $matchingComments) {
             Write-Host "Deleting previous benchmark comment ID: $($comment.id)"
             gh api --method DELETE "repos/$env:GITHUB_REPOSITORY/issues/comments/$($comment.id)" | Out-Null
         }
