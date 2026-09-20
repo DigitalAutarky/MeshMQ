@@ -14,7 +14,7 @@ Import-Module "$PSScriptRoot/Conversion.psm1" -Force
 Import-Module "$PSScriptRoot/Format.psm1" -Force
 Import-Module "$PSScriptRoot/Get-BenchmarkGroupName.psm1" -Force
 Import-Module "$PSScriptRoot/github/Render-GithubMarkdown.psm1" -Force
-Import-Module "$PSScriptRoot/github/Publish-BenchmarkComment.psm1" -Force
+Import-Module "$PSScriptRoot/github/Publish-GithubComment.psm1" -Force
 
 # --- 1. Load Files ---
 $benchFiles = Get-ChildItem -Path $BenchmarkPath -Filter "*-report-full-augmented.json"
