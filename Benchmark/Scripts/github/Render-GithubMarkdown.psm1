@@ -27,7 +27,8 @@ function Render-GithubMarkdown {
 
     # Render Groups
     $star      = [char]::ConvertFromUtf32(0x2B50)
-    $improved  = [char]::ConvertFromUtf32(0x1F7E2)$regressed = [char]::ConvertFromUtf32(0x1F534)
+    $improved  = [char]::ConvertFromUtf32(0x1F7E2)
+    $regressed = [char]::ConvertFromUtf32(0x1F534)
 
     foreach ($group in $ViewModel.Groups) {
         $regInd = if ($group.HasRegressions) { ":red_circle:" } else { "" }
