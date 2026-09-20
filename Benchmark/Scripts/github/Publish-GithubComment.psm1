@@ -7,11 +7,11 @@ function Publish-GithubComment {
     )
 
     # 1. Output to Markdown file
-    $outDir = Split-Path$ComparisonResultPath -Parent
+    $outDir = Split-Path $ComparisonResultPath -Parent
     if (-not (Test-Path $outDir)) {
         New-Item -ItemType Directory -Path $outDir -Force | Out-Null
     }
-    $Markdown \vert{} Set-Content -Path$ComparisonResultPath -Encoding UTF8
+    $Markdown | Set-Content -Path $ComparisonResultPath -Encoding UTF8
 
     # 2. GitHub CLI Posting Logic
     if ($env:GITHUB_REF -match "refs/pull/(\d+)/merge") {
@@ -19,7 +19,7 @@ function Publish-GithubComment {
 
         Write-Host "Fetching previous benchmark comments..."
         $commentsJson = gh api "repos/$env:GITHUB_REPOSITORY/issues/$prNumber/comments" --paginate | ConvertFrom-Json
-        $matchingComments =$commentsJson | Where-Object { $_.body -match "tag:$CommentTag" }
+        $matchingComments = $commentsJson | Where-Object { $_.body -match "tag:$CommentTag" }
 
         foreach ($comment in $matchingComments) {
             Write-Host "Deleting previous benchmark comment ID: $($comment.id)"
