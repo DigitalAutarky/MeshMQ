@@ -10,11 +10,11 @@ param(
 )
 
 # 0. Imports
-Import-Module "$PSScriptRoot/Conversion.psm1" -Force
-Import-Module "$PSScriptRoot/Format.psm1" -Force
+Import-Module "$PSScriptRoot/Conversion/Convert-BenchmarkValue.psm1" -Force
+Import-Module "$PSScriptRoot/Formatting/Format-BenchmarkValue.psm1" -Force
 Import-Module "$PSScriptRoot/Get-BenchmarkGroupName.psm1" -Force
-Import-Module "$PSScriptRoot/github/Render-GithubMarkdown.psm1" -Force
-Import-Module "$PSScriptRoot/github/Publish-GithubComment.psm1" -Force
+Import-Module "$PSScriptRoot/Integration/Github/Render-GithubMarkdown.psm1" -Force
+Import-Module "$PSScriptRoot/Integration/Github/Publish-GithubComment.psm1" -Force
 
 # --- 1. Load Files ---
 $benchFiles = Get-ChildItem -Path $BenchmarkPath -Filter "*-report-full-augmented.json"
@@ -115,7 +115,7 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
     foreach ($col in $displayCols) {
         $validValues = @($groupData | ForEach-Object { Get-NestedProperty -obj $_ -path $col.Key } | Where-Object { $null -ne $_ })
         if ($validValues.Count -gt 0) {
-            $optimalUnits[$col.Key] = Get-Optimal-DisplayUnit -Values ([double[]]$validValues) -Unit $col.Unit
+            $optimalUnits[$col.Key] = Get-BenchmarkDisplayUnit -Values ([double[]]$validValues) -Unit $col.Unit
             if ($groupData.Count -gt 1) {
                 $bestValues[$col.Key] = if ($col.Threshold -gt 1) { ($validValues | Measure-Object -Minimum).Minimum } else { ($validValues | Measure-Object -Maximum).Maximum }
             }
@@ -161,8 +161,8 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
 
             if ($null -ne $currentVal) {
                 $optUnit = $optimalUnits[$col.Key]
-                $convertedCurrent = Convert -Value $currentVal -FromUnit $col.Unit -ToUnit $optUnit
-                $currentFmt = Format-Value -Value $convertedCurrent -Unit $optUnit
+                $convertedCurrent = Convert-BenchmarkValue -Value $currentVal -FromUnit $col.Unit -ToUnit $optUnit
+                $currentFmt = Format-BenchmarkValue -Value $convertedCurrent -Unit $optUnit
 
                 if ($null -ne $baseVal -and $baseVal -ne 0) {
                     $ratio = $currentVal / $baseVal

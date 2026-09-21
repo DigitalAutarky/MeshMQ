@@ -1,16 +1,13 @@
-Import-Module "$PSScriptRoot/Conversion.psm1" -Force
+Import-Module "$PSScriptRoot/../Conversion/Get-BenchmarkValueType.psm1" -Force
 
-function Format-Value {
+function Format-BenchmarkValue {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true, Position = 0)]
-        [double]$Value,
-        
-        [Parameter(Mandatory = $true, Position = 1)]
-        [string]$Unit
+        [Parameter(Mandatory = $true, Position = 0)] [double]$Value,
+        [Parameter(Mandatory = $true, Position = 1)] [string]$Unit
     )
     
-    $unitType = Get-Unit-Type -Unit $Unit
+    $unitType = Get-BenchmarkValueType -Unit $Unit
     switch -CaseSensitive ($unitType) {
         "duration"  { return "$("{0:N2}" -f $Value)$Unit" }
         "memory"    { return "$("{0:N2}" -f $Value)$Unit" }
