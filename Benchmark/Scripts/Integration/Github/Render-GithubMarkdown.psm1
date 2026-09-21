@@ -1,7 +1,9 @@
+using module "../BenchmarkViewModel.psm1"
+
 function Render-GithubMarkdown {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)][psobject]$ViewModel,
+        [Parameter(Mandatory=$true)][BenchmarkViewModel]$ViewModel,
         [Parameter(Mandatory=$true)][string]$CommentTag
     )
 

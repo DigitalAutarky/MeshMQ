@@ -21,7 +21,6 @@
     <ItemGroup>
       <Folder Include="BenchmarkDotNet.Artifacts\" />
       <Folder Include="BenchmarkDotNet.Artifacts\results\" />
-      <Folder Include="Scripts\Integration\" />
     </ItemGroup>
 
 </Project>

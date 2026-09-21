@@ -9,12 +9,13 @@ param(
     [Parameter(Mandatory=$false)][string[]]$Compare
 )
 
+using module ".\BenchmarkViewModel.psm1"
+
 # 0. Imports
 Import-Module "$PSScriptRoot/Conversion/Convert-BenchmarkValue.psm1" -Force
 Import-Module "$PSScriptRoot/Formatting/Format-BenchmarkValue.psm1" -Force
 Import-Module "$PSScriptRoot/Formatting/Get-BenchmarkDisplayUnit.psm1" -Force
 Import-Module "$PSScriptRoot/Get-BenchmarkGroupName.psm1" -Force
-
 Import-Module "$PSScriptRoot/Integration/Github/Render-GithubMarkdown.psm1" -Force
 Import-Module "$PSScriptRoot/Integration/Github/Publish-GithubComment.psm1" -Force
 
@@ -225,7 +226,7 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
     }
 }
 
-$viewModel = [PSCustomObject]@{
+$viewModel = [BenchmarkViewModel]@{
     OverallFailure = $overallFailure
     IsComparingAgainstSelf = $isComparingAgainstSelf
     Environment = $environment
