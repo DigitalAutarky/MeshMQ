@@ -12,7 +12,9 @@ param(
 # 0. Imports
 Import-Module "$PSScriptRoot/Conversion/Convert-BenchmarkValue.psm1" -Force
 Import-Module "$PSScriptRoot/Formatting/Format-BenchmarkValue.psm1" -Force
+Import-Module "$PSScriptRoot/Formatting/Get-BenchmarkDisplayUnit.psm1" -Force
 Import-Module "$PSScriptRoot/Get-BenchmarkGroupName.psm1" -Force
+
 Import-Module "$PSScriptRoot/Integration/Github/Render-GithubMarkdown.psm1" -Force
 Import-Module "$PSScriptRoot/Integration/Github/Publish-GithubComment.psm1" -Force
 
