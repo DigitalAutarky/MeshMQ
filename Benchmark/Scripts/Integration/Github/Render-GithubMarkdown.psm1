@@ -11,7 +11,7 @@ function Render-GithubMarkdown {
         [Parameter(Mandatory=$true)][string]$CommentTag
     )
 
-    $md = [System.Text.StringBuilder]::new()atta
+    $md = [System.Text.StringBuilder]::new()
     $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null
 
     if ($ViewModel.IsComparingAgainstSelf) {
