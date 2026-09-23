@@ -9,13 +9,17 @@ param(
     [Parameter(Mandatory=$false)][string[]]$Compare
 )
 
-using module ".\BenchmarkViewModel.psm1"
+# 0. Load Types for strict type safety
+if (-not ('Benchmark.BenchmarkViewModel' -as [type])) {
+    Add-Type -Path "$PSScriptRoot/Integration/BenchmarkViewModel.cs"
+}
 
 # 0. Imports
 Import-Module "$PSScriptRoot/Conversion/Convert-BenchmarkValue.psm1" -Force
 Import-Module "$PSScriptRoot/Formatting/Format-BenchmarkValue.psm1" -Force
 Import-Module "$PSScriptRoot/Formatting/Get-BenchmarkDisplayUnit.psm1" -Force
 Import-Module "$PSScriptRoot/Get-BenchmarkGroupName.psm1" -Force
+
 Import-Module "$PSScriptRoot/Integration/Github/Render-GithubMarkdown.psm1" -Force
 Import-Module "$PSScriptRoot/Integration/Github/Publish-GithubComment.psm1" -Force
 
@@ -83,7 +87,7 @@ $envProps = @("BenchmarkDotNetCaption", "BenchmarkDotNetVersion", "OsVersion", "
 $environment = foreach ($prop in $envProps) {
     $bVal = Get-NestedProperty -obj $allBenchObjects[0] -path "HostEnvironmentInfo.$prop"
     $baseVal = Get-NestedProperty -obj $allBaseObjects[0] -path "HostEnvironmentInfo.$prop"
-    [PSCustomObject]@{ Label = $prop; Current = $bVal; Baseline = $baseVal; HasChanged = ($bVal -ne $baseVal) }
+    [Benchmark.BenchmarkEnvironment]@{ Label = $prop; Current = $bVal; Baseline = $baseVal; HasChanged = ($bVal -ne $baseVal) }
 }
 
 # Group Benchmarks
@@ -144,16 +148,16 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
     # Build Rows
     $rows = foreach ($bench in $groupData) {
         $baseline = $allBaseBenchmarks | Where-Object DisplayInfo -eq $bench.DisplayInfo | Select-Object -First 1
-        $cells = [System.Collections.Generic.List[psobject]]::new()
+        $cells = [System.Collections.Generic.List[Benchmark.BenchmarkCell]]::new()
 
         # Text Cells
-        $cells.Add([PSCustomObject]@{ Text = ($bench.MethodTitle ?? "N/A").Replace('|', '-'); IsBest=$false; IsRegression=$false; IsImprovement=$false })
-        $cells.Add([PSCustomObject]@{ Text = ($bench.JobId ?? "N/A").Replace('|', '-'); IsBest=$false; IsRegression=$false; IsImprovement=$false })
+        $cells.Add([Benchmark.BenchmarkCell]@{ Text = ($bench.MethodTitle ?? "N/A").Replace('|', '-'); IsBest=$false; IsRegression=$false; IsImprovement=$false })
+        $cells.Add([Benchmark.BenchmarkCell]@{ Text = ($bench.JobId ?? "N/A").Replace('|', '-'); IsBest=$false; IsRegression=$false; IsImprovement=$false })
 
         $pDict = $groupParamsMap[$bench.DisplayInfo]
         foreach ($k in $allParamKeys) {
             $val = if ($pDict.Contains($k)) { $pDict[$k] } else { "N/A" }
-            $cells.Add([PSCustomObject]@{ Text = $val.Replace('|', '-'); IsBest=$false; IsRegression=$false; IsImprovement=$false })
+            $cells.Add([Benchmark.BenchmarkCell]@{ Text = $val.Replace('|', '-'); IsBest=$false; IsRegression=$false; IsImprovement=$false })
         }
 
         # Display Metric Cells
@@ -193,7 +197,7 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
             }
 
             $isBest = ($bestValues.Contains($col.Key) -and $currentVal -eq $bestValues[$col.Key])
-            $cells.Add([PSCustomObject]@{ Text = $cellText; IsBest = $isBest; IsRegression = $isFailed; IsImprovement = $isImproved })
+            $cells.Add([Benchmark.BenchmarkCell]@{ Text = $cellText; IsBest = $isBest; IsRegression = $isFailed; IsImprovement = $isImproved })
         }
 
         # Compare Metric Cells
@@ -205,28 +209,28 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
                     if ($null -ne $currentVal -and $null -ne $baseVal -and $baseVal -ne 0) {
                         $ratio = $currentVal / $baseVal
                         $isBest = ($bestRatios.Contains($col.Key) -and $ratio -eq $bestRatios[$col.Key])
-                        $cells.Add([PSCustomObject]@{ Text = "{0:N2}" -f $ratio; IsBest = $isBest; IsRegression = $false; IsImprovement = $false })
+                        $cells.Add([Benchmark.BenchmarkCell]@{ Text = "{0:N2}" -f $ratio; IsBest = $isBest; IsRegression = $false; IsImprovement = $false })
                     } else {
-                        $cells.Add([PSCustomObject]@{ Text = "N/A"; IsBest=$false; IsRegression=$false; IsImprovement=$false })
+                        $cells.Add([Benchmark.BenchmarkCell]@{ Text = "N/A"; IsBest=$false; IsRegression=$false; IsImprovement=$false })
                     }
                 } else {
-                    $cells.Add([PSCustomObject]@{ Text = "N/A"; IsBest=$false; IsRegression=$false; IsImprovement=$false })
+                    $cells.Add([Benchmark.BenchmarkCell]@{ Text = "N/A"; IsBest=$false; IsRegression=$false; IsImprovement=$false })
                 }
             }
         }
-        [PSCustomObject]@{ Cells = $cells }
+        [Benchmark.BenchmarkRow]@{ Cells = $cells.ToArray() }
     }
 
-    [PSCustomObject]@{
+    [Benchmark.BenchmarkGroup]@{
         GroupName = $groupWrapper.GroupName
         HasRegressions = $groupHasRegressions
         HasImprovements = $groupHasImprovements
-        Headers = $headers
+        Headers = $headers.ToArray()
         Rows = $rows
     }
 }
 
-$viewModel = [BenchmarkViewModel]@{
+$viewModel = [Benchmark.BenchmarkViewModel]@{
     OverallFailure = $overallFailure
     IsComparingAgainstSelf = $isComparingAgainstSelf
     Environment = $environment
@@ -235,14 +239,11 @@ $viewModel = [BenchmarkViewModel]@{
 
 
 # --- 4. Render and Publish ---
-
-# Call b) to render Markdown
+# Render results and publish the results as a pull request comment
 $markdown = Render-GithubMarkdown -ViewModel $viewModel -CommentTag $CommentTag
-
-# Call c) to publish the comment
 Publish-GithubComment -Markdown $markdown -ComparisonResultPath $ComparisonResult -CommentTag $CommentTag
 
-# Evaluate FailOnRegression
+# --- 5. Done ---
 if ($viewModel.OverallFailure) {
     Write-Warning "Performance regression detected! One or more benchmarks exceeded their configured thresholds."
 

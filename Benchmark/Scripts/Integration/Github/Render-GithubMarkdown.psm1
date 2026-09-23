@@ -1,13 +1,17 @@
-using module "../BenchmarkViewModel.psm1"
+# Load view model type for strict type safety
+if (-not ('Benchmark.BenchmarkViewModel' -as [type])) {
+    Add-Type -Path "$PSScriptRoot/../BenchmarkViewModel.cs"
+}
 
+# Render Github Markdown as string
 function Render-GithubMarkdown {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)][BenchmarkViewModel]$ViewModel,
+        [Parameter(Mandatory=$true)][Benchmark.BenchmarkViewModel]$ViewModel,
         [Parameter(Mandatory=$true)][string]$CommentTag
     )
 
-    $md = [System.Text.StringBuilder]::new()
+    $md = [System.Text.StringBuilder]::new()atta
     $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null
 
     if ($ViewModel.IsComparingAgainstSelf) {
