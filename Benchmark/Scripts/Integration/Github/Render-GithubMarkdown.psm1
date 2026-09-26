@@ -74,7 +74,7 @@ function Render-LogicalGroup
     # Render logical group as table in a detail section
     $summary = "### $($group.GroupName) $regInd$impInd"
     $groupTable = Render-GithubMarkdownTable -Group $group
-    $groupDetail = Render-GithubDetailsSection -Summery $summary -Content $groupTable -IsOpen $group.HasRegressions
+    $groupDetail = Render-GithubDetailsSection -Summary $summary -Content $groupTable -IsOpen $group.HasRegressions
 
     return $groupDetail
 }
