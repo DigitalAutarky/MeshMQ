@@ -3,6 +3,82 @@ if (-not ('Benchmark.BenchmarkViewModel' -as [type])) {
     Add-Type -Path "$PSScriptRoot/../BenchmarkViewModel.cs"
 }
 
+# Global Variables
+$star      = [char]::ConvertFromUtf32(0x2B50)
+$improved  = [char]::ConvertFromUtf32(0x1F7E2)
+$regressed = [char]::ConvertFromUtf32(0x1F534)
+
+# Render a collapsible detais section
+function Render-GithubDetailsSection
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][String]$Summary,
+        [Parameter(Mandatory = $true)][String]$Content,
+        [Parameter(Mandatory = $true)][Bool]$IsOpen
+    )
+
+    $md = [System.Text.StringBuilder]::new() 
+    $md.AppendLine("<details$($IsOpen ? ' open' : '')>") | Out-Null
+    $md.AppendLine("<summary>`n`n### $summary`n`n</summary>`n") | Out-Null
+    $md.AppendLine($Content) | Out-Null
+    $md.AppendLine("</details>`n") | Out-Null
+    
+    return $md.ToString()
+}
+
+# Render Github Markdown Table
+function Render-GithubMarkdownTable
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][Benchmark.BenchmarkGroup]$Group
+    )
+
+    $md = [System.Text.StringBuilder]::new()
+
+    # Write Headers & Separators
+    $md.AppendLine("| $($Group.Headers -join ' | ') |") | Out-Null
+    $separators = $Group.Headers | ForEach-Object { ":---" }
+    $md.AppendLine("| $($separators -join ' | ') |") | Out-Null
+
+    # Write table rows
+    foreach ($row in $Group.Rows) {
+        $formattedCells = foreach ($cell in $row.Cells) {
+            $txt = $cell.Text
+            if ($cell.IsRegression) { $txt = "**$txt** $regressed" }
+            elseif ($cell.IsImprovement) { $txt = "**$txt** $improved" }
+            
+            if ($cell.IsBest) { $txt = "$txt $star" }
+            $txt
+        }
+        
+        $md.AppendLine("| $($formattedCells -join ' | ') |") | Out-Null
+    }
+    
+    return $md.ToString()
+}
+
+# Render a benchmark dotnet logical group
+function Render-LogicalGroup
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][Benchmark.BenchmarkGroup]$Group
+    )
+
+    # Define performance indicators
+    $regInd = if ($group.HasRegressions) { $regressed } else { "" }
+    $impInd = if ($group.HasImprovements) { $improved  } else { "" }
+
+    # Render logical group as table in a detail section
+    $summary = "### $($group.GroupName) $regInd$impInd"
+    $groupTable = Render-GithubMarkdownTable -Group $group
+    $groupDetail = Render-GithubDetailsSection -Summery $summary -Content $groupTable -IsOpen $group.HasRegressions
+
+    return $groupDetail
+}
+
 # Render Github Markdown as string
 function Render-GithubMarkdown {
     [CmdletBinding()]
@@ -20,7 +96,7 @@ function Render-GithubMarkdown {
     }
 
     $statusEmoji = if ($ViewModel.OverallFailure) { ":no_entry_sign:" } else { ":thumbsup:" }
-    $md.AppendLine("<details><summary>`n`n## Benchmark Summary $statusEmoji`n`n</summary>`n`n") | Out-Null
+    $md.AppendLine("<details><summary>`n`n## Benchmark Results $statusEmoji`n`n</summary>`n`n") | Out-Null
 
     # Render Environment
     $md.AppendLine("> <div align=""center"">`n> ") | Out-Null
@@ -31,38 +107,35 @@ function Render-GithubMarkdown {
     }
     $md.AppendLine("> `n> </div>`n___`n`n") | Out-Null
 
-    # Render Groups
-    $star      = [char]::ConvertFromUtf32(0x2B50)
-    $improved  = [char]::ConvertFromUtf32(0x1F7E2)
-    $regressed = [char]::ConvertFromUtf32(0x1F534)
-
+    # Render Logical Groups and and collect them
+    # in failed/succeeded string builders
+    $totalCount = 0
+    $failedCount = 0
+    $secceededCount = 0
+    $failed = [System.Text.StringBuilder]::new()
+    $succeeded = [System.Text.StringBuilder]::new()
     foreach ($group in $ViewModel.Groups) {
-        $regInd = if ($group.HasRegressions) { ":red_circle:" } else { "" }
-        $impInd = if ($group.HasImprovements) { ":green_circle:" } else { "" }
-
-        $md.AppendLine("<details><summary>`n`n### $($group.GroupName) $regInd$impInd`n`n</summary>`n") | Out-Null
-
-        # Headers & Separators
-        $md.AppendLine("| $($group.Headers -join ' | ') |") | Out-Null
-        $separators = $group.Headers | ForEach-Object { if ($_ -in @("Method", "JobId") -or $_ -match "^Param_") { ":---" } else { "---:" } }
-        $md.AppendLine("| $($separators -join ' | ') |") | Out-Null
-
-        # Rows
-        foreach ($row in $group.Rows) {
-            $formattedCells = foreach ($cell in $row.Cells) {
-                $txt = $cell.Text
-                if ($cell.IsRegression) { $txt = "**$txt** $regressed" }
-                elseif ($cell.IsImprovement) { $txt = "**$txt** $improved" }
-
-                if ($cell.IsBest) { $txt = "$txt $star" }
-                $txt
-            }
-            $md.AppendLine("| $($formattedCells -join ' | ') |") | Out-Null
+        $totalCount++
+        if($group.HasRegressions) {
+            $renderedGroup = Render-LogicalGroup -Group $group
+            $failed.Append($renderedGroup)
+            $failedCount++
         }
-
-        $md.AppendLine("</details>`n") | Out-Null
+        else {
+            $renderedGroup = Render-LogicalGroup -Group $group
+            $succeeded.Append($renderedGroup)
+            $secceededCount++
+        }
     }
+    
+    # Finally add our collected items to the main output
+    $failures = Render-GithubDetailsSection -Summery "Failed ($failedCount/$totalCount)" -Content $failed -IsOpen $true
+    $md.Append($failures)
 
+    $successes = Render-GithubDetailsSection -Summery "Succeeded ($secceededCount/$totalCount)" -Content $succeeded -IsOpen $false
+    $md.Append($successes)
+    
+    # Done
     $md.AppendLine("</details>") | Out-Null
     return $md.ToString()
 }

@@ -10,7 +10,7 @@ namespace Benchmark
 
     public class BenchmarkRow
     {
-        public BenchmarkCell[] Cells { get; set; } = System.Array.Empty<BenchmarkCell>();
+        public BenchmarkCell[] Cells { get; set; } = [];
     }
 
     public class BenchmarkGroup
@@ -18,8 +18,8 @@ namespace Benchmark
         public string GroupName { get; set; } = string.Empty;
         public bool HasRegressions { get; set; }
         public bool HasImprovements { get; set; }
-        public string[] Headers { get; set; } = System.Array.Empty<string>();
-        public BenchmarkRow[] Rows { get; set; } = System.Array.Empty<BenchmarkRow>();
+        public string[] Headers { get; set; } = [];
+        public BenchmarkRow[] Rows { get; set; } = [];
     }
 
     public class BenchmarkEnvironment
@@ -34,7 +34,7 @@ namespace Benchmark
     {
         public bool OverallFailure { get; set; }
         public bool IsComparingAgainstSelf { get; set; }
-        public BenchmarkEnvironment[] Environment { get; set; } = System.Array.Empty<BenchmarkEnvironment>();
-        public BenchmarkGroup[] Groups { get; set; } = System.Array.Empty<BenchmarkGroup>();
+        public BenchmarkEnvironment[] Environment { get; set; } = [];
+        public BenchmarkGroup[] Groups { get; set; } = [];
     }
 }
