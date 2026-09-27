@@ -27,6 +27,28 @@ function Render-GithubDetailsSection
     return $md.ToString()
 }
 
+function Render-GithubBlockquote
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][String]$Text,
+        [Parameter(Mandatory = $true)][int]$IndentationLevel
+    )
+
+    # Create prefix based on the requested indentytion level
+    $prefix = ""
+    while($IndentationLevel-- -gt 0) {
+        $prefix = "> $prefix"
+    }
+    
+    # Splits on either standard newline or carriage return + newline
+    $prefixed = ($Text -split '\r?\n' | ForEach-Object {
+        "$prefix $_"
+    }) -join "`n"
+    
+    return $prefixed
+}
+
 # Render Github Markdown Table
 function Render-GithubMarkdownTable
 {
@@ -64,7 +86,8 @@ function Render-LogicalGroup
 {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)][Benchmark.BenchmarkGroup]$Group
+        [Parameter(Mandatory = $true)][Benchmark.BenchmarkGroup]$Group,
+        [Parameter(Mandatory = $true)][int]$indentationLevel
     )
 
     # Define performance indicators
@@ -72,11 +95,12 @@ function Render-LogicalGroup
     $impInd = if ($group.HasImprovements) { $improved  } else { "" }
 
     # Render logical group as table in a detail section
-    $summary = "### $($group.GroupName) $regInd$impInd"
+    $summary = "$($group.GroupName) $regInd$impInd"
     $groupTable = Render-GithubMarkdownTable -Group $group
     $groupDetail = Render-GithubDetailsSection -Summary $summary -Content $groupTable -IsOpen $group.HasRegressions
-
-    return $groupDetail
+    $indented = Render-GithubBlockquote -Text $groupDetail -IndentationLevel $indentationLevel
+    
+    return $indented
 }
 
 # Render Github Markdown as string
@@ -108,7 +132,9 @@ function Render-GithubMarkdown {
     $md.AppendLine("> `n> </div>`n___`n`n") | Out-Null
 
     # Render Logical Groups and and collect them
-    # in failed/succeeded string builders
+    # in failed/succeeded string builders so we can collapse the section
+    # containing the successful results and only present the regression group
+    # in an open detail element
     $totalCount = 0
     $failedCount = 0
     $secceededCount = 0
@@ -117,12 +143,12 @@ function Render-GithubMarkdown {
     foreach ($group in $ViewModel.Groups) {
         $totalCount++
         if($group.HasRegressions) {
-            $renderedGroup = Render-LogicalGroup -Group $group
+            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1
             $failed.Append($renderedGroup) | Out-Null
             $failedCount++
         }
         else {
-            $renderedGroup = Render-LogicalGroup -Group $group
+            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1
             $succeeded.Append($renderedGroup) | Out-Null
             $secceededCount++
         }
