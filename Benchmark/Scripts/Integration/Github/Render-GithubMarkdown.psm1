@@ -14,7 +14,7 @@ function Render-GithubDetailsSection
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][String]$Summary,
-        [Parameter(Mandatory = $true)][String]$Content,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][String]$Content,
         [Parameter(Mandatory = $true)][Bool]$IsOpen
     )
 
@@ -129,11 +129,11 @@ function Render-GithubMarkdown {
     }
     
     # Finally add our collected items to the main output
-    $failures = Render-GithubDetailsSection -Summery "Failed ($failedCount/$totalCount)" -Content $failed -IsOpen $true
-    $md.Append($failures)
+    $failures = Render-GithubDetailsSection -Summary "Failed ($failedCount/$totalCount)" -Content $failed -IsOpen $true
+    $md.Append($failures) | Out-Null
 
-    $successes = Render-GithubDetailsSection -Summery "Succeeded ($secceededCount/$totalCount)" -Content $succeeded -IsOpen $false
-    $md.Append($successes)
+    $successes = Render-GithubDetailsSection -Summary "Succeeded ($secceededCount/$totalCount)" -Content $succeeded -IsOpen $false
+    $md.Append($successes) | Out-Null
     
     # Done
     $md.AppendLine("</details>") | Out-Null
