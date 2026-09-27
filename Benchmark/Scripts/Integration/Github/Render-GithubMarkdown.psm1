@@ -118,12 +118,12 @@ function Render-GithubMarkdown {
         $totalCount++
         if($group.HasRegressions) {
             $renderedGroup = Render-LogicalGroup -Group $group
-            $failed.Append($renderedGroup)
+            $failed.Append($renderedGroup) | Out-Null
             $failedCount++
         }
         else {
             $renderedGroup = Render-LogicalGroup -Group $group
-            $succeeded.Append($renderedGroup)
+            $succeeded.Append($renderedGroup) | Out-Null
             $secceededCount++
         }
     }
