@@ -158,11 +158,15 @@ function Render-GithubMarkdown {
     }
     
     # Finally add our collected items to the main output
-    $failures = Render-GithubDetailsSection -Summary "Failed ($failedCount/$totalCount)" -Content $failed -IsOpen $true
-    $md.Append($failures) | Out-Null
+    if ($failedCount -gt 0) {
+        $failures = Render-GithubDetailsSection -Summary "Failed ($failedCount/$totalCount)" -Content $failed -IsOpen $true
+        $md.Append($failures) | Out-Null    
+    }
 
-    $successes = Render-GithubDetailsSection -Summary "Succeeded ($secceededCount/$totalCount)" -Content $succeeded -IsOpen $false
-    $md.Append($successes) | Out-Null
+    if ($secceededCount -gt 0) {
+        $successes = Render-GithubDetailsSection -Summary "Succeeded ($secceededCount/$totalCount)" -Content $succeeded -IsOpen $false
+        $md.Append($successes) | Out-Null
+    }
     
     # Done
     $md.AppendLine("</details>") | Out-Null
