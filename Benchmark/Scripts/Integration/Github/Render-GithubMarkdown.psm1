@@ -18,11 +18,13 @@ function Render-GithubDetailsSection
         [Parameter(Mandatory = $true)][Bool]$IsOpen
     )
 
-    $md = [System.Text.StringBuilder]::new() 
+    $md = [System.Text.StringBuilder]::new()
     $md.AppendLine("<details$($IsOpen ? ' open' : '')>") | Out-Null
-    $md.AppendLine("<summary>`n`n### $summary`n`n</summary>`n") | Out-Null
+    $md.AppendLine("<summary><strong>$Summary</strong></summary>") | Out-Null
+    $md.AppendLine() | Out-Null # CRITICAL: Blank line before markdown content
     $md.AppendLine($Content) | Out-Null
-    $md.AppendLine("</details>`n") | Out-Null
+    $md.AppendLine() | Out-Null # CRITICAL: Blank line before closing tag
+    $md.AppendLine("</details>") | Out-Null
     
     return $md.ToString()
 }
@@ -43,7 +45,7 @@ function Render-GithubBlockquote
     
     # Splits on either standard newline or carriage return + newline
     $prefixed = ($Text -split '\r?\n' | ForEach-Object {
-        "$prefix $_"
+        "$prefix$_"
     }) -join "`n"
     
     return $prefixed
@@ -120,8 +122,9 @@ function Render-GithubMarkdown {
     }
 
     $statusEmoji = if ($ViewModel.OverallFailure) { ":no_entry_sign:" } else { ":thumbsup:" }
-    $md.AppendLine("<details><summary>`n`n## Benchmark Results $statusEmoji`n`n</summary>`n`n") | Out-Null
-
+    $md.AppendLine("<details><summary><strong>Benchmark Results $statusEmoji</strong></summary>") | Out-Null
+    $md.AppendLine() | Out-Null
+    
     # Render Environment
     $md.AppendLine("> <div align=""center"">`n> ") | Out-Null
     foreach ($env in $ViewModel.Environment) {
@@ -144,12 +147,12 @@ function Render-GithubMarkdown {
         $totalCount++
         if($group.HasRegressions) {
             $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1
-            $failed.Append($renderedGroup) | Out-Null
+            $failed.AppendLine($renderedGroup) | Out-Null
             $failedCount++
         }
         else {
             $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1
-            $succeeded.Append($renderedGroup) | Out-Null
+            $succeeded.AppendLine($renderedGroup) | Out-Null
             $secceededCount++
         }
     }
