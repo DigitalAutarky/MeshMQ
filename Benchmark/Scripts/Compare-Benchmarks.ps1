@@ -145,6 +145,9 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
         }
     }
 
+    $maxChangeMagnitude = -1.0
+    $groupTopChangeItem = $null
+
     # Build Rows
     $rows = foreach ($bench in $groupData) {
         $baseline = $allBaseBenchmarks | Where-Object DisplayInfo -eq $bench.DisplayInfo | Select-Object -First 1
@@ -191,6 +194,23 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
                     } elseif (($col.Threshold -gt 1 -and $ratio -lt (1 / $col.Threshold)) -or ($col.Threshold -lt 1 -and $ratio -gt (1 / $col.Threshold))) {
                         $isImproved = $true; $groupHasImprovements = $true
                     }
+                    
+                    #track biggest absolute change
+                    $changeMagnitude = [math]::Abs(1.0 - $ratio)
+                    if ($changeMagnitude -gt $maxChangeMagnitude) {
+                        $maxChangeMagnitude = $changeMagnitude
+                        $summaryType = if ($isFailed) { "Regression" } elseif ($isImproved) { "Improvement" } else { "Unchanged" }
+
+                        $groupTopChangeItem = [Benchmark.BenchmarkTopChangeItem]@{
+                            Type = $summaryType
+                            Method = $bench.MethodTitle ?? "N/A"
+                            Attribute = $col.Name
+                            Ratio = "{0:N2}" -f $ratio
+                            IsRegression = $isFailed
+                            IsImprovement = $isImproved
+                        }
+                    }
+                    
                 } else {
                     $cellText = $currentFmt
                 }
@@ -227,6 +247,7 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
         HasImprovements = $groupHasImprovements
         Headers = $headers.ToArray()
         Rows = $rows
+        TopChangeItem = $groupTopChangeItem
     }
 }
 

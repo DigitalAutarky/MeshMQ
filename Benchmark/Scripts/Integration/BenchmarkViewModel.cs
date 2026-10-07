@@ -13,6 +13,16 @@ namespace Benchmark
         public BenchmarkCell[] Cells { get; set; } = [];
     }
 
+    public class BenchmarkTopChangeItem
+    {
+        public string Type { get; set; } = string.Empty;
+        public string Method { get; set; } = string.Empty;
+        public string Attribute { get; set; } = string.Empty;
+        public string Ratio { get; set; } = string.Empty;
+        public bool IsRegression { get; set; }
+        public bool IsImprovement { get; set; }
+    }
+
     public class BenchmarkGroup
     {
         public string GroupName { get; set; } = string.Empty;
@@ -20,6 +30,7 @@ namespace Benchmark
         public bool HasImprovements { get; set; }
         public string[] Headers { get; set; } = [];
         public BenchmarkRow[] Rows { get; set; } = [];
+        public BenchmarkTopChangeItem TopChangeItem { get; set; }
     }
 
     public class BenchmarkEnvironment

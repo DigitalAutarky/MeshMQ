@@ -105,6 +105,45 @@ function Render-LogicalGroup
     return $indented
 }
 
+# Render a benchmark dotnet logical group
+function Render-LogicalGroupTopChanges
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][Benchmark.BenchmarkGroup[]]$Groups,
+        [Parameter(Mandatory = $true)][int]$IndentationLevel
+    )
+
+    # Render top changes table
+    $topChangesTable = [System.Text.StringBuilder]::new()
+    $topChangesTable.AppendLine("| Group | Method | Attribute | Ratio | Status |") | Out-Null
+    $topChangesTable.AppendLine("| :--- | :--- | :--- | :--- | :--- |") | Out-Null
+
+    $hasSummaryItems = $false
+    foreach ($group in $Groups) {
+        $item = $group.TopChangeItem
+        if ($null -ne $item -and ($item.IsRegression -or $item.IsImprovement)) {
+            $hasSummaryItems = $true
+            $icon = if ($item.IsRegression) { $regressed } else { $improved }
+            $topChangesTable.AppendLine("| $($group.GroupName) | $($item.Method) | $($item.Attribute) | $($item.Ratio) | $($item.Type) $icon |") | Out-Null
+        }
+    }
+    
+    # Return null if no changes were rendered
+    if ($hasSummaryItems -eq $false) {
+        return $null
+    }
+    
+    # Wrap it in an open details section
+    $topChangesDetail = Render-GithubDetailsSection -Summary "Top Changes" -Content $topChangesTable.ToString() -IsOpen $true
+    
+    # Indent with blockquote
+    $indented = Render-GithubBlockquote -Text $topChangesDetail -IndentationLevel $IndentationLevel
+
+    # Done
+    return $indented
+}
+
 # Render Github Markdown as string
 function Render-GithubMarkdown {
     [CmdletBinding()]
@@ -113,14 +152,17 @@ function Render-GithubMarkdown {
         [Parameter(Mandatory=$true)][string]$CommentTag
     )
 
+    # Render tag which identifies our comments for updates/deletions
     $md = [System.Text.StringBuilder]::new()
     $md.AppendLine("<!-- tag:$CommentTag -->") | Out-Null
 
+    # Render warning if no baseline was found
     if ($ViewModel.IsComparingAgainstSelf) {
         $md.AppendLine("> [!WARNING]") | Out-Null
         $md.AppendLine("> No baseline JSON found so this run compared the benchmark result against itself.") | Out-Null
     }
 
+    # Begin Rendering main details sections
     $statusEmoji = if ($ViewModel.OverallFailure) { ":no_entry_sign:" } else { ":thumbsup:" }
     $md.AppendLine("<details><summary><strong>Benchmark Results $statusEmoji</strong></summary>") | Out-Null
     $md.AppendLine() | Out-Null
@@ -134,6 +176,12 @@ function Render-GithubMarkdown {
     }
     $md.AppendLine("> `n> </div>`n___`n`n") | Out-Null
 
+    # Render top changes summary if available
+    $topChangesSummary = Render-LogicalGroupTopChanges -Groups $ViewModel.Groups -IndentationLevel 1
+    if ($null -ne $topChangesSummary) {
+        $md.AppendLine($topChangesSummary) | Out-Null
+    }
+    
     # Render Logical Groups and and collect them
     # in failed/succeeded string builders so we can collapse the section
     # containing the successful results and only present the regression group
@@ -160,12 +208,12 @@ function Render-GithubMarkdown {
     # Finally add our collected items to the main output
     if ($failedCount -gt 0) {
         $failures = Render-GithubDetailsSection -Summary "Failed ($failedCount/$totalCount)" -Content $failed -IsOpen $true
-        $md.Append($failures) | Out-Null    
+        $md.AppendLine($failures) | Out-Null    
     }
 
     if ($secceededCount -gt 0) {
         $successes = Render-GithubDetailsSection -Summary "Succeeded ($secceededCount/$totalCount)" -Content $succeeded -IsOpen $false
-        $md.Append($successes) | Out-Null
+        $md.AppendLine($successes) | Out-Null
     }
     
     # Done
