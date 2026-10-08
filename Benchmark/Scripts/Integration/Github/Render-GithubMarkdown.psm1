@@ -89,17 +89,13 @@ function Render-LogicalGroup
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][Benchmark.BenchmarkGroup]$Group,
-        [Parameter(Mandatory = $true)][int]$indentationLevel
+        [Parameter(Mandatory = $true)][int]$indentationLevel,
+        [Parameter(Mandatory = $true)][bool]$IsOpen
     )
 
-    # Define performance indicators
-    $regInd = if ($group.HasRegressions) { $regressed } else { "" }
-    $impInd = if ($group.HasImprovements) { $improved  } else { "" }
-
     # Render logical group as table in a detail section
-    $summary = "$($group.GroupName) $regInd$impInd"
     $groupTable = Render-GithubMarkdownTable -Group $group
-    $groupDetail = Render-GithubDetailsSection -Summary $summary -Content $groupTable -IsOpen $group.HasRegressions
+    $groupDetail = Render-GithubDetailsSection -Summary $group.GroupName -Content $groupTable -IsOpen $IsOpen
     $indented = Render-GithubBlockquote -Text $groupDetail -IndentationLevel $indentationLevel
     
     return $indented
@@ -125,7 +121,7 @@ function Render-LogicalGroupTopChanges
         if ($null -ne $item -and ($item.IsRegression -or $item.IsImprovement)) {
             $hasSummaryItems = $true
             $icon = if ($item.IsRegression) { $regressed } else { $improved }
-            $topChangesTable.AppendLine("| $($group.GroupName) | $($item.Method) | $($item.Attribute) | $($item.Ratio) | $($item.Type) $icon |") | Out-Null
+            $topChangesTable.AppendLine("| $($group.GroupName) | $($item.Method) | $($item.Attribute) | $($item.Ratio) | $icon |") | Out-Null
         }
     }
     
@@ -171,7 +167,7 @@ function Render-GithubMarkdown {
     $md.AppendLine("> <div align=""center"">`n> ") | Out-Null
     foreach ($env in $ViewModel.Environment) {
         $result =$env.Current
-        if ($env.HasChanged) {$result = "$\color{orange}{\mathbf{\text{$result (was: $($env.Baseline))}}}$" }
+        if ($env.HasChanged) {$result = "<strong>$result (was: $($env.Baseline))</strong>" }
         $md.AppendLine("> $result") | Out-Null
     }
     $md.AppendLine("> `n> </div>`n___`n`n") | Out-Null
@@ -179,7 +175,8 @@ function Render-GithubMarkdown {
     # Render top changes summary if available
     $topChangesSummary = Render-LogicalGroupTopChanges -Groups $ViewModel.Groups -IndentationLevel 1
     if ($null -ne $topChangesSummary) {
-        $md.AppendLine($topChangesSummary) | Out-Null
+        $topChangesDetail = Render-GithubDetailsSection -Summary "Quick Summary" -Content $topChangesSummary -IsOpen $true
+        $md.AppendLine($topChangesDetail) | Out-Null
     }
     
     # Render Logical Groups and and collect them
@@ -194,12 +191,12 @@ function Render-GithubMarkdown {
     foreach ($group in $ViewModel.Groups) {
         $totalCount++
         if($group.HasRegressions) {
-            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1
+            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1 -IsOpen $true
             $failed.AppendLine($renderedGroup) | Out-Null
             $failedCount++
         }
         else {
-            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1
+            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1 -IsOpen $false
             $succeeded.AppendLine($renderedGroup) | Out-Null
             $secceededCount++
         }

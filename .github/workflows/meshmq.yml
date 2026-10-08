@@ -106,4 +106,4 @@ jobs:
               "key=Statistics.Max&name=Max&unit=ns&threshold=1.2", `
               "key=Memory.BytesAllocatedPerOperation&name=Allocation&unit=B&threshold=1.2" `
             -Compare `
-              "key=Statistics.Mean&name=Ratio&biggerIsBetter=false"
+              "key=Statistics.Mean&name=Mean Δ&biggerIsBetter=false"
