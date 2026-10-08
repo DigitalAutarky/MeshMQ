@@ -93,11 +93,12 @@ function Render-LogicalGroup
         [Parameter(Mandatory = $true)][bool]$IsOpen
     )
 
-    # Render logical group as table in a detail section
-    $groupTable = Render-GithubMarkdownTable -Group $group
-    $groupDetail = Render-GithubDetailsSection -Summary $group.GroupName -Content $groupTable -IsOpen $IsOpen
+    # Render logical group as table in a detail section with anchor target
+    $groupTable = Render-GithubMarkdownTable -Group $Group
+    $content = "<a name=""$($Group.GroupKey)""></a>`n`n$groupTable"
+    $groupDetail = Render-GithubDetailsSection -Summary $Group.GroupName -Content $content -IsOpen $IsOpen
     $indented = Render-GithubBlockquote -Text $groupDetail -IndentationLevel $indentationLevel
-    
+
     return $indented
 }
 
@@ -113,7 +114,7 @@ function Render-LogicalGroupTopChanges
     # Render top changes table
     $topChangesTable = [System.Text.StringBuilder]::new()
     $topChangesTable.AppendLine("| Group | Method | Attribute | Ratio | Status |") | Out-Null
-    $topChangesTable.AppendLine("| :--- | :--- | :--- | :--- | :--- |") | Out-Null
+    $topChangesTable.AppendLine("| :--- | :--- | :--- | :--- | ---: |") | Out-Null
 
     $hasSummaryItems = $false
     foreach ($group in $Groups) {
@@ -121,7 +122,8 @@ function Render-LogicalGroupTopChanges
         if ($null -ne $item -and ($item.IsRegression -or $item.IsImprovement)) {
             $hasSummaryItems = $true
             $icon = if ($item.IsRegression) { $regressed } else { $improved }
-            $topChangesTable.AppendLine("| $($group.GroupName) | $($item.Method) | $($item.Attribute) | $($item.Ratio) | $icon |") | Out-Null
+            $groupLink = "[$($group.GroupName)](#$($group.GroupKey))"
+            $topChangesTable.AppendLine("| $groupLink | $($item.Method) | $($item.Attribute) | $($item.Ratio) | $icon |") | Out-Null
         }
     }
     
