@@ -119,6 +119,7 @@ function Render-LogicalGroupTopChanges
     )
 
     # Render top changes table
+    $topChangesTable = [System.Text.StringBuilder]::new()
     $topChangesTable.AppendLine("<table width=""100%"">") | Out-Null
     $topChangesTable.AppendLine("<thead>") | Out-Null
     $topChangesTable.AppendLine("<tr>") | Out-Null
