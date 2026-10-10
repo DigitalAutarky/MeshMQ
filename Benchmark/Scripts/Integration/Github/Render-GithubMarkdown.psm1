@@ -4,9 +4,9 @@ if (-not ('Benchmark.BenchmarkViewModel' -as [type])) {
 }
 
 # Global Variables
-$star      = [char]::ConvertFromUtf32(0x2B50)
-$improved  = [char]::ConvertFromUtf32(0x1F7E2)
-$regressed = [char]::ConvertFromUtf32(0x1F534)
+$bestIcon      = [char]::ConvertFromUtf32(0x2B50)
+$improvedIcon  = [char]::ConvertFromUtf32(0x1F7E2)
+$regressedIcon = [char]::ConvertFromUtf32(0x1F534)
 
 # Render a collapsible detais section
 function Render-GithubDetailsSection
@@ -61,25 +61,33 @@ function Render-GithubMarkdownTable
 
     $md = [System.Text.StringBuilder]::new()
 
-    # Write Headers & Separators
-    $md.AppendLine("| $($Group.Headers -join ' | ') |") | Out-Null
-    $separators = $Group.Headers | ForEach-Object { ":---" }
-    $md.AppendLine("| $($separators -join ' | ') |") | Out-Null
+    # Write Headers
+    $md.AppendLine("<table width=""100%"">") | Out-Null
+    $md.AppendLine("<thead>") | Out-Null
+    $md.AppendLine("<tr>") | Out-Null
+    foreach ($header in $Group.Headers) {
+        $md.AppendLine("<th>$header</th>") | Out-Null
+    }
+    $md.AppendLine("</tr>") | Out-Null
+    $md.AppendLine("</thead>") | Out-Null
 
     # Write table rows
+    $md.AppendLine("<tbody>") | Out-Null
     foreach ($row in $Group.Rows) {
-        $formattedCells = foreach ($cell in $row.Cells) {
+        $md.AppendLine("<tr>") | Out-Null
+        foreach ($cell in $row.Cells) {
             $txt = $cell.Text
-            if ($cell.IsRegression) { $txt = "**$txt** $regressed" }
-            elseif ($cell.IsImprovement) { $txt = "**$txt** $improved" }
+            if ($cell.IsRegression) { $txt = "$txt $regressedIcon" }
+            elseif ($cell.IsImprovement) { $txt = "$txt $improvedIcon" }
             
-            if ($cell.IsBest) { $txt = "$txt $star" }
-            $txt
+            if ($cell.IsBest) { $txt = "$txt $bestIcon" }
+            $md.AppendLine("<td>$txt</td>") | Out-Null
         }
-        
-        $md.AppendLine("| $($formattedCells -join ' | ') |") | Out-Null
+        $md.AppendLine("</tr>") | Out-Null
     }
-    
+
+    $md.AppendLine("</tbody>") | Out-Null
+    $md.AppendLine("</table>") | Out-Null
     return $md.ToString()
 }
 
@@ -89,19 +97,16 @@ function Render-LogicalGroup
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][Benchmark.BenchmarkGroup]$Group,
-        [Parameter(Mandatory = $true)][int]$indentationLevel
+        [Parameter(Mandatory = $true)][int]$indentationLevel,
+        [Parameter(Mandatory = $true)][bool]$IsOpen
     )
 
-    # Define performance indicators
-    $regInd = if ($group.HasRegressions) { $regressed } else { "" }
-    $impInd = if ($group.HasImprovements) { $improved  } else { "" }
-
-    # Render logical group as table in a detail section
-    $summary = "$($group.GroupName) $regInd$impInd"
-    $groupTable = Render-GithubMarkdownTable -Group $group
-    $groupDetail = Render-GithubDetailsSection -Summary $summary -Content $groupTable -IsOpen $group.HasRegressions
+    # Render logical group as table in a detail section with anchor target
+    $groupTable = Render-GithubMarkdownTable -Group $Group
+    $summaryWithAnchor = "<a id=""$($group.GroupKey)""></a>$($group.GroupName)"
+    $groupDetail = Render-GithubDetailsSection -Summary $summaryWithAnchor -Content $groupTable -IsOpen $IsOpen
     $indented = Render-GithubBlockquote -Text $groupDetail -IndentationLevel $indentationLevel
-    
+
     return $indented
 }
 
@@ -116,18 +121,36 @@ function Render-LogicalGroupTopChanges
 
     # Render top changes table
     $topChangesTable = [System.Text.StringBuilder]::new()
-    $topChangesTable.AppendLine("| Group | Method | Attribute | Ratio | Status |") | Out-Null
-    $topChangesTable.AppendLine("| :--- | :--- | :--- | :--- | :--- |") | Out-Null
-
+    $topChangesTable.AppendLine("<table>") | Out-Null
+    $topChangesTable.AppendLine("<thead>") | Out-Null
+    $topChangesTable.AppendLine("<tr>") | Out-Null
+    $topChangesTable.AppendLine("<th>Group</th>") | Out-Null
+    $topChangesTable.AppendLine("<th>Method</th>") | Out-Null
+    $topChangesTable.AppendLine("<th>Attribute</th>") | Out-Null
+    $topChangesTable.AppendLine("<th>Ratio</th>") | Out-Null
+    $topChangesTable.AppendLine("<th align=""center"">Status</th>") | Out-Null
+    $topChangesTable.AppendLine("</tr>") | Out-Null
+    $topChangesTable.AppendLine("</thead>") | Out-Null
+    
     $hasSummaryItems = $false
+    $topChangesTable.AppendLine("<tbody>") | Out-Null
     foreach ($group in $Groups) {
         $item = $group.TopChangeItem
         if ($null -ne $item -and ($item.IsRegression -or $item.IsImprovement)) {
             $hasSummaryItems = $true
-            $icon = if ($item.IsRegression) { $regressed } else { $improved }
-            $topChangesTable.AppendLine("| $($group.GroupName) | $($item.Method) | $($item.Attribute) | $($item.Ratio) | $($item.Type) $icon |") | Out-Null
+            $icon = if ($item.IsRegression) { $regressedIcon } else { $improvedIcon }
+            $groupLink = "<a href=""#$($group.GroupKey)"">$($group.GroupName)</a>"
+            $topChangesTable.AppendLine("<tr>") | Out-Null
+            $topChangesTable.AppendLine("<td>$groupLink</td>") | Out-Null
+            $topChangesTable.AppendLine("<td>$($item.Method)</td>") | Out-Null
+            $topChangesTable.AppendLine("<td>$($item.Attribute)</td>") | Out-Null
+            $topChangesTable.AppendLine("<td>$($item.Ratio)</td>") | Out-Null
+            $topChangesTable.AppendLine("<td align=""center"">$icon</td>") | Out-Null
+            $topChangesTable.AppendLine("</tr>") | Out-Null
         }
     }
+    $topChangesTable.AppendLine("</tbody>") | Out-Null
+    $topChangesTable.AppendLine("</table>") | Out-Null
     
     # Return null if no changes were rendered
     if ($hasSummaryItems -eq $false) {
@@ -171,7 +194,7 @@ function Render-GithubMarkdown {
     $md.AppendLine("> <div align=""center"">`n> ") | Out-Null
     foreach ($env in $ViewModel.Environment) {
         $result =$env.Current
-        if ($env.HasChanged) {$result = "$\color{orange}{\mathbf{\text{$result (was: $($env.Baseline))}}}$" }
+        if ($env.HasChanged) {$result = "<strong>$result (was: $($env.Baseline))</strong>" }
         $md.AppendLine("> $result") | Out-Null
     }
     $md.AppendLine("> `n> </div>`n___`n`n") | Out-Null
@@ -179,41 +202,51 @@ function Render-GithubMarkdown {
     # Render top changes summary if available
     $topChangesSummary = Render-LogicalGroupTopChanges -Groups $ViewModel.Groups -IndentationLevel 1
     if ($null -ne $topChangesSummary) {
-        $md.AppendLine($topChangesSummary) | Out-Null
+        $topChangesDetail = Render-GithubDetailsSection -Summary "Quick Summary" -Content $topChangesSummary -IsOpen $true
+        $md.AppendLine($topChangesDetail) | Out-Null
     }
     
-    # Render Logical Groups and and collect them
-    # in failed/succeeded string builders so we can collapse the section
-    # containing the successful results and only present the regression group
-    # in an open detail element
+    # Render Logical Groups into sections based on regressions/improvements
     $totalCount = 0
-    $failedCount = 0
-    $secceededCount = 0
-    $failed = [System.Text.StringBuilder]::new()
-    $succeeded = [System.Text.StringBuilder]::new()
+    $regressedCount = 0
+    $improvedCount = 0
+    $unchangedCount = 0
+    $regressedResults = [System.Text.StringBuilder]::new()
+    $improvedResults = [System.Text.StringBuilder]::new()
+    $unchangedResults = [System.Text.StringBuilder]::new()
     foreach ($group in $ViewModel.Groups) {
         $totalCount++
         if($group.HasRegressions) {
-            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1
-            $failed.AppendLine($renderedGroup) | Out-Null
-            $failedCount++
+            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1 -IsOpen $true
+            $regressedResults.AppendLine($renderedGroup) | Out-Null
+            $regressedCount++
+        }
+        elseif ($group.HasImprovements) {
+            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1 -IsOpen $true
+            $improvedResults.AppendLine($renderedGroup) | Out-Null
+            $improvedCount++
         }
         else {
-            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1
-            $succeeded.AppendLine($renderedGroup) | Out-Null
-            $secceededCount++
+            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1 -IsOpen $false
+            $unchangedResults.AppendLine($renderedGroup) | Out-Null
+            $unchangedCount++
         }
     }
     
     # Finally add our collected items to the main output
-    if ($failedCount -gt 0) {
-        $failures = Render-GithubDetailsSection -Summary "Failed ($failedCount/$totalCount)" -Content $failed -IsOpen $true
+    if ($regressedCount -gt 0) {
+        $failures = Render-GithubDetailsSection -Summary "Regressed ($regressedCount/$totalCount)" -Content $regressedResults -IsOpen $true
         $md.AppendLine($failures) | Out-Null    
     }
 
-    if ($secceededCount -gt 0) {
-        $successes = Render-GithubDetailsSection -Summary "Succeeded ($secceededCount/$totalCount)" -Content $succeeded -IsOpen $false
+    if ($improvedCount -gt 0) {
+        $successes = Render-GithubDetailsSection -Summary "Improved ($improvedCount/$totalCount)" -Content $improvedResults -IsOpen $true
         $md.AppendLine($successes) | Out-Null
+    }
+
+    if ($unchangedCount -gt 0) {
+        $unchangedDetail = Render-GithubDetailsSection -Summary "Unchanged ($unchangedCount/$totalCount)" -Content $unchangedResults -IsOpen $false
+        $md.AppendLine($unchangedDetail) | Out-Null
     }
     
     # Done

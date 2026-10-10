@@ -7,10 +7,7 @@ namespace Benchmark;
 [Config(typeof(AllNet11PreviewsConfig))]
 public class MultipleRuntimesBenchmark
 {
-    [Params(100, 1000)]
-    public int Param1 { get; set; }
-    
     [Benchmark]
     public async Task Wait30MsAsync()
-        => await Task.Delay(30);
+        => await Task.Delay(15);
 }

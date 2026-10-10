@@ -92,7 +92,7 @@ $environment = foreach ($prop in $envProps) {
 
 # Group Benchmarks
 $groupedBenchmarks = $allBenchmarks | Group-Object GroupingKey
-$sortedGroups = foreach ($group in $groupedBenchmarks) { [PSCustomObject]@{ GroupName = Get-BenchmarkGroupName -Group $group; Data = $group } }
+$sortedGroups = foreach ($group in $groupedBenchmarks) { [PSCustomObject]@{ GroupKey = $group.Name; GroupName = Get-BenchmarkGroupName -Group $group; Data = $group } }
 $sortedGroups = $sortedGroups | Sort-Object GroupName
 
 $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
@@ -176,26 +176,17 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
 
                 if ($null -ne $baseVal -and $baseVal -ne 0) {
                     $ratio = $currentVal / $baseVal
-                    $parentPath = if ($col.Key.LastIndexOf('.') -gt 0) { $col.Key.Substring(0, $col.Key.LastIndexOf('.')) } else { $null }
-                    $currentSd = if ($parentPath) { Get-NestedProperty -obj $bench -path "$parentPath.StandardDeviation" } else { $null }
-                    $baseSd = if ($parentPath) { Get-NestedProperty -obj $baseline -path "$parentPath.StandardDeviation" } else { $null }
-
-                    if ($null -ne $currentSd -and $null -ne $baseSd -and $currentVal -ne 0) {
-                        $ratioSd = $ratio * [math]::Sqrt([math]::Pow($currentSd / $currentVal, 2) + [math]::Pow($baseSd / $baseVal, 2))
-                        $ratioStr = "{0:N2} ± {1:N2}" -f $ratio, $ratioSd
-                    } else {
-                        $ratioStr = "{0:N2}" -f $ratio
-                    }
-
-                    $cellText = "$currentFmt ($ratioStr)"
+                    $pct = [math]::Round(($ratio - 1.0) * 100)
+                    $pctStr = if ($pct -gt 0) { "+$pct%" } else { "$pct%" }
+                    $cellText = "$currentFmt ($pctStr)"
 
                     if (($col.Threshold -gt 1 -and $ratio -gt $col.Threshold) -or ($col.Threshold -lt 1 -and $ratio -lt $col.Threshold)) {
                         $isFailed = $true; $overallFailure = $true; $groupHasRegressions = $true
                     } elseif (($col.Threshold -gt 1 -and $ratio -lt (1 / $col.Threshold)) -or ($col.Threshold -lt 1 -and $ratio -gt (1 / $col.Threshold))) {
                         $isImproved = $true; $groupHasImprovements = $true
                     }
-                    
-                    #track biggest absolute change
+
+                    # Track biggest absolute change
                     $changeMagnitude = [math]::Abs(1.0 - $ratio)
                     if ($changeMagnitude -gt $maxChangeMagnitude) {
                         $maxChangeMagnitude = $changeMagnitude
@@ -205,7 +196,7 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
                             Type = $summaryType
                             Method = $bench.MethodTitle ?? "N/A"
                             Attribute = $col.Name
-                            Ratio = "{0:N2}" -f $ratio
+                            Ratio = $pctStr
                             IsRegression = $isFailed
                             IsImprovement = $isImproved
                         }
@@ -229,7 +220,8 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
                     if ($null -ne $currentVal -and $null -ne $baseVal -and $baseVal -ne 0) {
                         $ratio = $currentVal / $baseVal
                         $isBest = ($bestRatios.Contains($col.Key) -and $ratio -eq $bestRatios[$col.Key])
-                        $cells.Add([Benchmark.BenchmarkCell]@{ Text = "{0:N2}" -f $ratio; IsBest = $isBest; IsRegression = $false; IsImprovement = $false })
+                        $pctStr = if ($bench.IsBaseline) { "base" } else { $p = [math]::Round(($ratio - 1.0) * 100); if ($p -gt 0) { "+$p%" } else { "$p%" } }
+                        $cells.Add([Benchmark.BenchmarkCell]@{ Text = $pctStr; IsBest = $isBest; IsRegression = $false; IsImprovement = $false })    
                     } else {
                         $cells.Add([Benchmark.BenchmarkCell]@{ Text = "N/A"; IsBest=$false; IsRegression=$false; IsImprovement=$false })
                     }
@@ -242,6 +234,7 @@ $groupViewModels = foreach ($groupWrapper in $sortedGroups) {
     }
 
     [Benchmark.BenchmarkGroup]@{
+        GroupKey = $groupWrapper.GroupKey
         GroupName = $groupWrapper.GroupName
         HasRegressions = $groupHasRegressions
         HasImprovements = $groupHasImprovements
