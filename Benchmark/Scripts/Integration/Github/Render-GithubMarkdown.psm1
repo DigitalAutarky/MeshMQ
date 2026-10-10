@@ -124,11 +124,11 @@ function Render-LogicalGroupTopChanges
     $topChangesTable.AppendLine("<table>") | Out-Null
     $topChangesTable.AppendLine("<thead>") | Out-Null
     $topChangesTable.AppendLine("<tr>") | Out-Null
-    $topChangesTable.AppendLine("<th width=""40%"">Group</th>") | Out-Null
-    $topChangesTable.AppendLine("<th width=""20%"">Method</th>") | Out-Null
-    $topChangesTable.AppendLine("<th width=""20%"">Attribute</th>") | Out-Null
-    $topChangesTable.AppendLine("<th width=""10%"">Ratio</th>") | Out-Null
-    $topChangesTable.AppendLine("<th width=""10%"" align=""center"">Status</th>") | Out-Null
+    $topChangesTable.AppendLine("<th>Group</th>") | Out-Null
+    $topChangesTable.AppendLine("<th>Method</th>") | Out-Null
+    $topChangesTable.AppendLine("<th>Attribute</th>") | Out-Null
+    $topChangesTable.AppendLine("<th>Ratio</th>") | Out-Null
+    $topChangesTable.AppendLine("<th align=""center"">Status</th>") | Out-Null
     $topChangesTable.AppendLine("</tr>") | Out-Null
     $topChangesTable.AppendLine("</thead>") | Out-Null
     
