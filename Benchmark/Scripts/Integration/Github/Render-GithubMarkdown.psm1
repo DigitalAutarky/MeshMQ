@@ -71,7 +71,7 @@ function Render-PaddedCodeBlockTable
     $md.AppendLine($paddedHeaders -join ' | ') | Out-Null
 
     # Write Separators
-    $separators = foreach ($header in$Group.Headers) {
+    $separators = foreach ($header in $Group.Headers) {
         "".PadRight($ColumnWidths[$header], '-')
     }
     
@@ -82,7 +82,8 @@ function Render-PaddedCodeBlockTable
         $formattedCells = [System.Collections.Generic.List[string]]::new()
 
         for ($i = 0; $i -lt $Group.Headers.Count; $i++) {
-            $cell =$row.Cells[$i]$header = $Group.Headers[$i]
+            $cell =$row.Cells[$i]
+            $header = $Group.Headers[$i]
             $txt =$cell.Text
     
             # Swap markdown/emojis for plain-text symbols
@@ -92,12 +93,12 @@ function Render-PaddedCodeBlockTable
             if ($cell.IsBest) { $txt = "$txt *" }
     
             $formattedCells.Add($txt.PadRight($ColumnWidths[$header]))
+        }
+
+        $md.AppendLine($formattedCells -join ' | ') | Out-Null
     }
 
-    $md.AppendLine($formattedCells -join ' | ') | Out-Null
-    }
-
-    $md.AppendLine("````") | Out-Null
+    $md.AppendLine('```') | Out-Null
     return $md.ToString()
 }
 
