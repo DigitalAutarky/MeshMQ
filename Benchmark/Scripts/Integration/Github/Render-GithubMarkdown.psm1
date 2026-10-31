@@ -117,9 +117,8 @@ function Render-LogicalGroup
     $groupTable = Render-PaddedCodeBlockTable -Group $group -ColumnWidths $ColumnWidths
     $content = "<a name=""$($group.GroupKey)""></a>`n`n$groupTable"
     $groupDetail = Render-GithubDetailsSection -Summary $group.GroupName -Content $content -IsOpen $IsOpen
-    $indented = Render-GithubBlockquote -Text $groupDetail -IndentationLevel $indentationLevel
-    
-    return $indented
+   
+    return $groupDetail
 }
 
 # Render a benchmark dotnet logical group
