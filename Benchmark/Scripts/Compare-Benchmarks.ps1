@@ -91,7 +91,10 @@ $environment = foreach ($prop in $envProps) {
 }
 
 # Group Benchmarks
-$groupedBenchmarks = $allBenchmarks | Group-Object GroupingKey
+$groupedBenchmarks = $allBenchmarks | Group-Object {
+    if ([string]::IsNullOrWhiteSpace($_.GroupingKey) -or $_.GroupingKey -eq "*") { $_.Type } else { $_.GroupingKey }
+}
+
 $sortedGroups = foreach ($group in $groupedBenchmarks) { [PSCustomObject]@{ GroupKey = $group.Name; GroupName = Get-BenchmarkGroupName -Group $group; Data = $group } }
 $sortedGroups = $sortedGroups | Sort-Object GroupName
 
