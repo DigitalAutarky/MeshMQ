@@ -114,7 +114,7 @@ function Render-LogicalGroup
     )
 
     # Render logical group as table in a detail section with anchor target
-    $groupTable = Render-PaddedCodeBlockTable -Group$group -ColumnWidths $ColumnWidths
+    $groupTable = Render-PaddedCodeBlockTable -Group $group -ColumnWidths $ColumnWidths
     $content = "<a name=""$($group.GroupKey)""></a>`n`n$groupTable"
     $groupDetail = Render-GithubDetailsSection -Summary $group.GroupName -Content $content -IsOpen $IsOpen
     $indented = Render-GithubBlockquote -Text $groupDetail -IndentationLevel $indentationLevel
