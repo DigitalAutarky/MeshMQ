@@ -51,43 +51,53 @@ function Render-GithubBlockquote
     return $prefixed
 }
 
-# Render Github Markdown Table
-function Render-GithubMarkdownTable
+# Render manual tables in a code block so we can align verything
+function Render-PaddedCodeBlockTable
 {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)][Benchmark.BenchmarkGroup]$Group
+        [Parameter(Mandatory = $true)][Benchmark.BenchmarkGroup]$Group,
+        [Parameter(Mandatory = $true)][hashtable]$ColumnWidths
     )
 
     $md = [System.Text.StringBuilder]::new()
+    $md.AppendLine("```text") | Out-Null
 
     # Write Headers
-    $md.AppendLine("<table width=""100%"">") | Out-Null
-    $md.AppendLine("<thead>") | Out-Null
-    $md.AppendLine("<tr>") | Out-Null
-    foreach ($header in $Group.Headers) {
-        $md.AppendLine("<th>$header</th>") | Out-Null
+    $paddedHeaders = foreach ($header in $Group.Headers) {
+        $header.PadRight($ColumnWidths[$header])
     }
-    $md.AppendLine("</tr>") | Out-Null
-    $md.AppendLine("</thead>") | Out-Null
+    
+    $md.AppendLine($paddedHeaders -join ' | ') | Out-Null
 
-    # Write table rows
-    $md.AppendLine("<tbody>") | Out-Null
+    # Write Separators
+    $separators = foreach ($header in$Group.Headers) {
+        "".PadRight($ColumnWidths[$header], '-')
+    }
+    
+    $md.AppendLine($separators -join '-+-') | Out-Null
+
+    # Write Rows
     foreach ($row in $Group.Rows) {
-        $md.AppendLine("<tr>") | Out-Null
-        foreach ($cell in $row.Cells) {
-            $txt = $cell.Text
-            if ($cell.IsRegression) { $txt = "$txt $regressedIcon" }
-            elseif ($cell.IsImprovement) { $txt = "$txt $improvedIcon" }
-            
-            if ($cell.IsBest) { $txt = "$txt $bestIcon" }
-            $md.AppendLine("<td>$txt</td>") | Out-Null
-        }
-        $md.AppendLine("</tr>") | Out-Null
+        $formattedCells = [System.Collections.Generic.List[string]]::new()
+
+        for ($i = 0; $i -lt $Group.Headers.Count; $i++) {
+            $cell =$row.Cells[$i]$header = $Group.Headers[$i]
+            $txt =$cell.Text
+    
+            # Swap markdown/emojis for plain-text symbols
+            if ($cell.IsRegression) { $txt = "$txt X" }
+            elseif ($cell.IsImprovement) { $txt = "$txt ^" }
+    
+            if ($cell.IsBest) { $txt = "$txt *" }
+    
+            $formattedCells.Add($txt.PadRight($ColumnWidths[$header]))
     }
 
-    $md.AppendLine("</tbody>") | Out-Null
-    $md.AppendLine("</table>") | Out-Null
+    $md.AppendLine($formattedCells -join ' | ') | Out-Null
+    }
+
+    $md.AppendLine("````") | Out-Null
     return $md.ToString()
 }
 
@@ -98,15 +108,16 @@ function Render-LogicalGroup
     param(
         [Parameter(Mandatory = $true)][Benchmark.BenchmarkGroup]$Group,
         [Parameter(Mandatory = $true)][int]$indentationLevel,
-        [Parameter(Mandatory = $true)][bool]$IsOpen
+        [Parameter(Mandatory = $true)][bool]$IsOpen,
+        [Parameter(Mandatory = $true)][hashtable]$ColumnWidths
     )
 
     # Render logical group as table in a detail section with anchor target
-    $groupTable = Render-GithubMarkdownTable -Group $Group
-    $summaryWithAnchor = "<a id=""$($group.GroupKey)""></a>$($group.GroupName)"
-    $groupDetail = Render-GithubDetailsSection -Summary $summaryWithAnchor -Content $groupTable -IsOpen $IsOpen
+    $groupTable = Render-PaddedCodeBlockTable -Group$group -ColumnWidths $ColumnWidths
+    $content = "<a name=""$($group.GroupKey)""></a>`n`n$groupTable"
+    $groupDetail = Render-GithubDetailsSection -Summary $group.GroupName -Content $content -IsOpen $IsOpen
     $indented = Render-GithubBlockquote -Text $groupDetail -IndentationLevel $indentationLevel
-
+    
     return $indented
 }
 
@@ -167,6 +178,39 @@ function Render-LogicalGroupTopChanges
     return $indented
 }
 
+# Determins the required widths for columns
+function Compute-TableWidths
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][Benchmark.BenchmarkViewModel]$ViewModel
+    )
+
+    # Pre-calculate global column widths across all groups for perfect alignment
+    $colWidths = @{}
+    foreach ($group in $ViewModel.Groups) {
+        for ($i = 0; $i -lt $group.Headers.Count; $i++) {
+            $header = $group.Headers[$i]
+            $len = $header.Length
+            if (-not $colWidths.Contains($header) -or $len -gt $colWidths[$header]) {
+                $colWidths[$header] = $len
+            }
+
+            foreach ($row in $group.Rows) {
+                # Account for text length plus plain-text markers (e.g., ' *', ' ^', ' X')
+                $cellLen = $row.Cells[$i].Text.Length
+                if ($row.Cells[$i].IsRegression -or $row.Cells[$i].IsImprovement -or $row.Cells[$i].IsBest) { $cellLen += 2 }
+
+                if ($cellLen -gt $colWidths[$header]) {
+                    $colWidths[$header] = $cellLen
+                }
+            }
+        }
+    }
+    
+    return $colWidths
+}
+
 # Render Github Markdown as string
 function Render-GithubMarkdown {
     [CmdletBinding()]
@@ -206,6 +250,9 @@ function Render-GithubMarkdown {
         $md.AppendLine($topChangesDetail) | Out-Null
     }
     
+    # Determine optimal columns widths for our table enderer
+    $optimalColumnWidths = Compute-TableWidths -ViewModel $ViewModel
+    
     # Render Logical Groups into sections based on regressions/improvements
     $totalCount = 0
     $regressedCount = 0
@@ -217,17 +264,17 @@ function Render-GithubMarkdown {
     foreach ($group in $ViewModel.Groups) {
         $totalCount++
         if($group.HasRegressions) {
-            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1 -IsOpen $true
+            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1 -IsOpen $true -ColumnWidths $optimalColumnWidths
             $regressedResults.AppendLine($renderedGroup) | Out-Null
             $regressedCount++
         }
         elseif ($group.HasImprovements) {
-            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1 -IsOpen $true
+            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1 -IsOpen $true -ColumnWidths $optimalColumnWidths
             $improvedResults.AppendLine($renderedGroup) | Out-Null
             $improvedCount++
         }
         else {
-            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1 -IsOpen $false
+            $renderedGroup = Render-LogicalGroup -Group $group -IndentationLevel 1 -IsOpen $false -ColumnWidths $optimalColumnWidths
             $unchangedResults.AppendLine($renderedGroup) | Out-Null
             $unchangedCount++
         }
