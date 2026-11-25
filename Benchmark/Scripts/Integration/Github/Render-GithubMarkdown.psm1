@@ -127,7 +127,7 @@ function Render-LogicalGroupTopChanges
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][Benchmark.BenchmarkGroup[]]$Groups,
-        [Parameter(Mandatory = $true)][int]$IndentationLevel
+        [Parameter(Mandatory = $true)][int]$IndentationLevel # Can be kept for signature compatibility or removed if unused
     )
 
     # Render top changes table
@@ -142,7 +142,7 @@ function Render-LogicalGroupTopChanges
     $topChangesTable.AppendLine("<th align=""center"">Status</th>") | Out-Null
     $topChangesTable.AppendLine("</tr>") | Out-Null
     $topChangesTable.AppendLine("</thead>") | Out-Null
-    
+
     $hasSummaryItems = $false
     $topChangesTable.AppendLine("<tbody>") | Out-Null
     foreach ($group in $Groups) {
@@ -162,20 +162,16 @@ function Render-LogicalGroupTopChanges
     }
     $topChangesTable.AppendLine("</tbody>") | Out-Null
     $topChangesTable.AppendLine("</table>") | Out-Null
-    
+
     # Return null if no changes were rendered
     if ($hasSummaryItems -eq $false) {
         return $null
     }
-    
-    # Wrap it in an open details section
-    $topChangesDetail = Render-GithubDetailsSection -Summary "Top Changes" -Content $topChangesTable.ToString() -IsOpen $true
-    
-    # Indent with blockquote
-    $indented = Render-GithubBlockquote -Text $topChangesDetail -IndentationLevel $IndentationLevel
 
-    # Done
-    return $indented
+    # Wrap it in an open details section (WITHOUT blockquote prefixing)
+    $topChangesDetail = Render-GithubDetailsSection -Summary "Top Changes" -Content $topChangesTable.ToString() -IsOpen $true
+
+    return $topChangesDetail
 }
 
 # Determins the required widths for columns
