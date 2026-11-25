@@ -61,7 +61,7 @@ function Render-PaddedCodeBlockTable
     )
 
     $md = [System.Text.StringBuilder]::new()
-    $md.AppendLine("```text") | Out-Null
+    $md.AppendLine('```text') | Out-Null
 
     # Write Headers
     $paddedHeaders = foreach ($header in $Group.Headers) {
