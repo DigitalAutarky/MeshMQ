@@ -9,5 +9,5 @@ public class MultipleRuntimesBenchmark
 {
     [Benchmark]
     public async Task Wait30MsAsync()
-        => await Task.Delay(15);
+        => await Task.Delay(30);
 }
